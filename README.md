@@ -34,7 +34,3 @@ Mode normal
 Mode maintenance
 Mode erreur
 Mode économie d’énergie
-
-Mode erreur
-
-Mode économie d’énergie (si prévu)
