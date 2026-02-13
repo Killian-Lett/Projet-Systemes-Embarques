@@ -39,10 +39,10 @@ Gestion LED RGB (état système)
 
 **Module Gestion des modes**
 
-Mode normal
+Mode standard
 
 Mode maintenance
 
-Mode erreur
+Mode configuration
 
-Mode économie d’énergie
+Mode économique 
