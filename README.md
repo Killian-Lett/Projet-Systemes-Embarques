@@ -136,7 +136,7 @@ Cela indique que le système fonctionne normalement.
 
 
 
-Mode maintenance
+
 # Mode maintenance
 
 Le mode maintenance est un mode spécifique destiné aux opérations de contrôle et de manipulation du système.  
@@ -217,6 +217,9 @@ En mode maintenance :
 - LED orange continue  
 
 Cette indication visuelle permet d’identifier clairement que le système n’est pas en fonctionnement normal et qu’aucune donnée n’est sauvegardée.
+
+
+
 Mode configuration
 
 Mode économique 
