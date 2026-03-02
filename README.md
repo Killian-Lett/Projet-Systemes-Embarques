@@ -245,7 +245,7 @@ Le mode configuration est piloté par une fonction dédiée runConfig(), exécut
 Un mécanisme de surveillance d’activité est intégré à travers la fonction noActivityFor30min(). En cas d’inactivité prolongée, le système quitte automatiquement le mode configuration en réaffectant la variable d’état currentMode au mode standard.
 Cette approche repose sur une logique de machine à états simple, garantissant un fonctionnement robuste, structuré et sécurisé.
 
-En Mode économique : 
+# En Mode économique : 
 
 **Structure:**
 
