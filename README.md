@@ -218,8 +218,55 @@ En mode maintenance :
 
 Cette indication visuelle permet d’identifier clairement que le système n’est pas en fonctionnement normal et qu’aucune donnée n’est sauvegardée.
 
+En Mode configuration:
+
+-Pas d’acquisition capteurs
+
+-Interaction série UART
+
+-Paramètres sauvegardés EEPROM
+
+-Retour auto après 30 min
+
+**Structure:**
+```c
+void runConfig() {
+
+  handleSerialCommands();
+
+  if (noActivityFor30min()) {
+    currentMode = STANDARD;
+ }
+}
+```
+**Gestion logicielle du mode configuration**
+
+Le mode configuration est piloté par une fonction dédiée runConfig(), exécutée lorsque le système est dans l’état correspondant. Cette fonction assure en priorité le traitement des commandes série via handleSerialCommands(), permettant la modification des paramètres internes.
+Un mécanisme de surveillance d’activité est intégré à travers la fonction noActivityFor30min(). En cas d’inactivité prolongée, le système quitte automatiquement le mode configuration en réaffectant la variable d’état currentMode au mode standard.
+Cette approche repose sur une logique de machine à états simple, garantissant un fonctionnement robuste, structuré et sécurisé.
+
+En Mode économique : 
+
+**Structure:**
+
+## Mode Économie – Structure du programme
+
+```c
+void runEco() {
+
+  if (timeToMeasureEco()) {
+     readSensorsReduced();
+     saveToSD();
+  }
+
+  if (longRedPress()) {
+     currentMode = STANDARD;
+  }
+}
+```
 
 
-Mode configuration
+Dans ce mode, les acquisitions ne sont pas continues mais déclenchées à intervalle réduit via la fonction timeToMeasureEco(), permettant d’espacer les mesures (par exemple toutes les 20 minutes au lieu de 10). Seuls les capteurs essentiels sont utilisés à travers la fonction readSensorsReduced(), ce qui limite la consommation des ressources matérielles.
+Les données collectées sont ensuite enregistrées sur la carte SD via la fonction saveToSD(), garantissant la continuité du suivi météorologique.
+Par ailleurs, une interaction utilisateur est maintenue : un appui long sur le bouton rouge (longRedPress()) permet de quitter le mode économique et de revenir au mode standard en modifiant la variable d’état currentMode.
 
-Mode économique 
