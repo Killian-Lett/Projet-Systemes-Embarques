@@ -218,7 +218,7 @@ En mode maintenance :
 
 Cette indication visuelle permet d’identifier clairement que le système n’est pas en fonctionnement normal et qu’aucune donnée n’est sauvegardée.
 
-En Mode configuration:
+# En Mode configuration:
 
 -Pas d’acquisition capteurs
 
