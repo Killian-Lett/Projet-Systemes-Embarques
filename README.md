@@ -1,89 +1,142 @@
 # Structures logicielles du programme
 
-## Structure de configuration EEPROM
+## Structure de configuration
 
-Pour pouvoir conserver les paramètres du système même après un redémarrage, le programme utilise la mémoire EEPROM du microcontrôleur. Afin de faciliter la gestion de ces paramètres, toutes les variables de configuration sont regroupées dans une seule structure appelée `ConfigEEPROM`.
+Dans notre programme, toutes les variables importantes du système sont regroupées dans une structure appelée `Variable`.  
+L’idée est simple : plutôt que d’avoir plein de variables dispersées dans le code, on rassemble tous les paramètres dans une seule structure.
 
-L’objectif de cette structure est de centraliser l’ensemble des paramètres modifiables du système, comme les intervalles de mesure, certains délais de fonctionnement ou encore les seuils utilisés par les capteurs. En regroupant ces données dans une seule structure, il devient plus simple de sauvegarder et de charger la configuration complète depuis l’EEPROM.
+Cela permet de garder un code plus clair et plus facile à modifier.
 
-Cette approche permet également de garder un code plus organisé, car tous les paramètres importants sont regroupés au même endroit.
+Dans cette structure, on retrouve par exemple :
+
+- les paramètres généraux du système
+- les seuils des capteurs
+- les options d’activation ou non de certains capteurs
 
 ```c
-struct ConfigEEPROM {
+struct Variable {
 
-  uint16_t magic;
-  uint32_t dureeAppuiLong;
-  uint32_t configTimeout;
-  uint32_t logInterval;
+    unsigned int DUREE_APPUI_LONG;
+    unsigned int CONFIG_TIMEOUT;
+    unsigned int LOG_INTERVAL;
 
-  uint16_t fileMaxSize;
-  uint8_t timeoutCapteur;
+    bool LUMIN;
+    int LUMIN_LOW;
+    int LUMIN_HIGH;
 
-  uint8_t luminActif;
-  int16_t luminLow;
-  int16_t luminHigh;
+    bool TEMP_AIR;
+    int MIN_TEMP_AIR;
+    int MAX_TEMP_AIR;
 
-  uint8_t tempAirActif;
-  int8_t minTempAir;
-  int8_t maxTempAir;
+    bool HYGR;
+    int HYGR_MINT;
+    int HYGR_MAXT;
 
-  uint8_t hygrActif;
-  int8_t hygrMint;
-  int8_t hygrMaxt;
-
-  uint8_t pressureActif;
-  uint16_t pressureMin;
-  uint16_t pressureMax;
-
-  char jourSemaine[4];
+    bool PRESSURE;
+    int PRESSURE_MIN;
+    int PRESSURE_MAX;
 };
 ```
 
-Un champ particulier appelé `magic` est utilisé pour vérifier si les données présentes dans l’EEPROM sont valides. Lors du démarrage, le programme lit ce champ afin de déterminer si la mémoire contient déjà une configuration correcte. Si ce n’est pas le cas, le système initialise alors les paramètres avec leurs valeurs par défaut.
+Ensuite, une variable globale appelée `config` est utilisée pour stocker la configuration active du système.
 
-Cette structure permet donc de garantir une gestion claire et fiable des paramètres du système.
+```c
+Variable config = {
+    3000, 20000, 10000,
+    1, 255, 768,
+    1, -10, 60,
+    1, 0, 50,
+    1, 850, 1080
+};
+```
 
+Cela permet d’avoir toutes les valeurs par défaut directement au démarrage du programme.
+
+
+
+## Sauvegarde des paramètres dans l’EEPROM
+
+Pour éviter de perdre les paramètres lors d’un redémarrage du système, la configuration peut être sauvegardée dans la mémoire **EEPROM**.
+
+Deux fonctions sont utilisées pour gérer cela :
+
+- `sauvegarderEEPROM()`
+- `chargerEEPROM()`
+
+```c
+void sauvegarderEEPROM() {
+  EEPROM.update(0, EEPROM_SIGNATURE);
+  EEPROM.put(1, config);
+}
+```
+
+La fonction `sauvegarderEEPROM()` permet d’enregistrer la structure `config` dans la mémoire EEPROM.
+
+De l’autre côté, la fonction `chargerEEPROM()` permet de récupérer les paramètres au démarrage du système.
+
+```c
+bool chargerEEPROM() {
+  if(EEPROM.read(0) != EEPROM_SIGNATURE){
+    Serial.println(F("EEPROM invalide, valeurs par defaut"));
+    return false;
+  }
+  EEPROM.get(1, config);
+  return true;
+}
+```
+
+Une signature (`EEPROM_SIGNATURE`) est utilisée pour vérifier que les données présentes en mémoire sont valides.
+
+Si la signature ne correspond pas, le programme considère que l’EEPROM n’est pas initialisée et utilise donc les valeurs par défaut.
 
 
 ## Machine à états (gestion des modes)
 
-Le fonctionnement général du programme repose sur une logique de machine à états. Cela signifie que le système peut se trouver dans différents modes de fonctionnement et que chacun de ces modes possède un comportement spécifique.
+Le fonctionnement global du programme repose sur une **machine à états**.  
+Cela signifie que le système peut fonctionner dans plusieurs modes différents.
 
-Dans le code, les différents états du système sont définis grâce à une énumération appelée `ModeCapteur`.
+Ces modes sont définis dans une énumération appelée `ModeCapteur`.
 
 ```c
 enum ModeCapteur {
-  STANDARD,
-  CONFIGURATION,
-  MAINTENANCE,
-  ECONOMIQUE
+    STANDARD,
+    CONFIGURATION,
+    MAINTENANCE,
+    ECONOMIQUE
 };
 ```
 
-Chaque valeur de cette énumération correspond à un mode particulier du système. Par exemple, le mode standard correspond au fonctionnement normal de la station météo, tandis que le mode configuration permet de modifier les paramètres via l’interface série.
+Chaque mode correspond à un comportement précis du système.
 
-Le mode courant est stocké dans une variable appelée `modeActuel`.
+Par exemple :
+
+- le mode **STANDARD** correspond au fonctionnement normal de la station météo
+- le mode **CONFIGURATION** permet de modifier les paramètres via le port série
+- le mode **MAINTENANCE** permet de tester les capteurs sans écrire sur la carte SD
+- le mode **ECONOMIQUE** réduit la fréquence des mesures pour économiser l’énergie
+
+Le mode courant est stocké dans la variable :
 
 ```c
 ModeCapteur modeActuel;
 ```
 
-En fonction de la valeur de cette variable, le programme adapte son comportement et exécute les fonctions correspondantes. Cette organisation sous forme de machine à états permet de structurer clairement le programme et de gérer facilement les transitions entre les différents modes.
+Le programme adapte ensuite son comportement en fonction de ce mode.
 
 
 
-## Gestion dynamique des modes avec des pointeurs de fonction
+## Utilisation des pointeurs de fonction
 
-Afin de simplifier la gestion des différents modes du système, le programme utilise également un pointeur de fonction. Cette technique permet d’associer dynamiquement une fonction au mode actif.
+Pour gérer les différents modes de manière plus propre, le programme utilise un **pointeur de fonction**.
 
-Un type de pointeur de fonction est d’abord défini dans le programme.
+Un type spécial est défini :
 
 ```c
 typedef void (*ModeHandler)();
-ModeHandler modeHandler;
+ModeHandler modeHandler = nullptr;
 ```
 
-Chaque mode possède ensuite une fonction dédiée qui décrit son comportement.
+Chaque mode possède sa propre fonction :
 
 ```c
 void modeStandard();
@@ -92,98 +145,93 @@ void modeMaintenance();
 void modeEconomique();
 ```
 
-Une fonction appelée `updateModeHandler()` permet d’associer la bonne fonction au mode courant.
+Une fonction appelée `updateModeHandler()` permet d’associer la bonne fonction au mode actuel.
 
 ```c
-void updateModeHandler() {
-
-  switch (modeActuel) {
-
-    case STANDARD:
-      modeHandler = &modeStandard;
-      break;
-
-    case CONFIGURATION:
-      modeHandler = &modeConfiguration;
-      break;
-
-    case MAINTENANCE:
-      modeHandler = &modeMaintenance;
-      break;
-
-    case ECONOMIQUE:
-      modeHandler = &modeEconomique;
-      break;
+void updateModeHandler(){
+  switch(modeActuel){
+    case STANDARD: modeHandler = &modeStandard; break;
+    case CONFIGURATION: modeHandler = &modeConfiguration; break;
+    case MAINTENANCE: modeHandler = &modeMaintenance; break;
+    case ECONOMIQUE: modeHandler = &modeEconomique; break;
   }
 }
 ```
 
-Dans la boucle principale du programme, il suffit ensuite d’appeler :
+Ensuite, dans la boucle principale, il suffit simplement d’exécuter :
 
 ```c
 modeHandler();
 ```
 
-Cela permet d’exécuter directement la fonction correspondant au mode actif. Cette méthode rend le programme plus clair et évite de multiplier les conditions dans la boucle principale.
+Cela permet d’appeler automatiquement la fonction correspondant au mode actif.
 
-
-
-## Gestion des commandes série
-
-Le mode configuration permet de modifier certains paramètres du système à travers l’interface série. Pour cela, le programme doit être capable de recevoir et d’interpréter les commandes envoyées par l’utilisateur.
-
-Les caractères reçus via la liaison série sont d’abord stockés dans un buffer.
-
-```c
-char cmdBuffer[40];
-uint8_t cmdPos = 0;
-```
-
-Lorsque l’utilisateur valide une commande, celle-ci est analysée par la fonction `traiterCommande()`.
-
-```c
-void traiterCommande(char *cmd);
-```
-
-Le programme utilise ensuite différentes conditions pour reconnaître les commandes et appliquer les modifications correspondantes.
-
-```c
-if (startsWith(cmd, "LOG_INTERVAL=")) {
-   ...
-}
-```
-
-Ce mécanisme permet par exemple de modifier l’intervalle de mesure, d’activer ou désactiver certains capteurs ou encore de changer différents seuils. Une fois les paramètres modifiés, ils sont sauvegardés dans l’EEPROM afin de conserver la configuration même après un redémarrage du système.
+Cette technique rend le code beaucoup plus propre et évite d’avoir de nombreuses conditions dans la boucle principale.
 
 
 
 ## Gestion des boutons
 
-L’utilisateur peut également interagir avec le système grâce à des boutons physiques. Afin d’améliorer la réactivité du programme, la gestion de ces boutons repose sur un système d’interruptions.
+L’utilisateur peut interagir avec le système grâce à deux boutons :
 
-Lorsqu’un bouton est pressé ou relâché, une interruption est déclenchée et modifie un indicateur dans le programme.
+- un bouton rouge
+- un bouton vert
+
+Pour améliorer la réactivité du programme, la gestion des boutons utilise des **interruptions**.
+
+Lorsque l’état d’un bouton change, une interruption est déclenchée et modifie un indicateur.
 
 ```c
 volatile bool rougeEvent = false;
-volatile bool vertEvent = false;
+volatile bool vertEvent  = false;
 ```
 
-Ces indicateurs sont ensuite analysés dans la boucle principale à l’aide d’une fonction appelée `traiterBouton()`.
+Ces indicateurs sont ensuite analysés dans la boucle principale grâce à une fonction générique appelée `traiterBouton()`.
 
 ```c
 void traiterBouton(...);
 ```
 
-Cette fonction permet notamment de distinguer les appuis courts et les appuis longs, ce qui permet d’associer plusieurs actions différentes à un même bouton. Grâce à ce mécanisme, le système reste réactif tout en évitant de bloquer l’exécution du programme.
+Cette fonction permet notamment de détecter :
+
+- les appuis courts
+- les appuis longs
+
+Selon la durée de l’appui, différentes actions peuvent être exécutées, comme changer de mode de fonctionnement.
 
 
 
 ## Organisation générale du programme
 
-Le programme suit la structure classique d’un programme Arduino avec deux fonctions principales : `setup()` et `loop()`.
+Comme tous les programmes Arduino, celui-ci est organisé autour de deux fonctions principales :
 
-La fonction `setup()` est exécutée une seule fois au démarrage du système. Elle permet d’initialiser les différents périphériques, de configurer les entrées et sorties du microcontrôleur, de démarrer les communications nécessaires et de charger les paramètres sauvegardés dans l’EEPROM.
+### Setup
 
-La fonction `loop()` constitue la boucle principale du programme. Elle est exécutée en continu tant que le système est alimenté. Dans cette boucle, le programme gère les interactions utilisateur, lit les données provenant de certains capteurs et exécute le comportement correspondant au mode actif.
+La fonction `setup()` est exécutée une seule fois au démarrage du système.
 
-Cette organisation permet au système de fonctionner de manière continue tout en restant capable de s’adapter aux différents modes de fonctionnement.
+Elle permet notamment :
+
+- d’initialiser les communications série
+- de démarrer les capteurs
+- de configurer les entrées et sorties
+- de charger les paramètres depuis l’EEPROM
+- d’initialiser la carte SD
+- de définir le mode de fonctionnement initial
+
+
+
+### Loop
+
+La fonction `loop()` constitue la boucle principale du programme.
+
+Elle est exécutée en continu tant que le système est alimenté.
+
+Dans cette boucle, le programme :
+
+- lit les données GPS
+- gère les appuis sur les boutons
+- vérifie les timeouts
+- exécute la fonction correspondant au mode actif
+- met à jour l’affichage LCD
+
+Cette organisation permet au système de fonctionner en continu tout en restant capable de changer de mode et de réagir aux actions de l’utilisateur.
