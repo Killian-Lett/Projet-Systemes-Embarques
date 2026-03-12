@@ -43,7 +43,7 @@ Un champ particulier appelé `magic` est utilisé pour vérifier si les données
 
 Cette structure permet donc de garantir une gestion claire et fiable des paramètres du système.
 
----
+
 
 ## Machine à états (gestion des modes)
 
@@ -70,7 +70,7 @@ ModeCapteur modeActuel;
 
 En fonction de la valeur de cette variable, le programme adapte son comportement et exécute les fonctions correspondantes. Cette organisation sous forme de machine à états permet de structurer clairement le programme et de gérer facilement les transitions entre les différents modes.
 
----
+
 
 ## Gestion dynamique des modes avec des pointeurs de fonction
 
@@ -126,7 +126,7 @@ modeHandler();
 
 Cela permet d’exécuter directement la fonction correspondant au mode actif. Cette méthode rend le programme plus clair et évite de multiplier les conditions dans la boucle principale.
 
----
+
 
 ## Gestion des commandes série
 
@@ -155,7 +155,7 @@ if (startsWith(cmd, "LOG_INTERVAL=")) {
 
 Ce mécanisme permet par exemple de modifier l’intervalle de mesure, d’activer ou désactiver certains capteurs ou encore de changer différents seuils. Une fois les paramètres modifiés, ils sont sauvegardés dans l’EEPROM afin de conserver la configuration même après un redémarrage du système.
 
----
+
 
 ## Gestion des boutons
 
@@ -176,7 +176,7 @@ void traiterBouton(...);
 
 Cette fonction permet notamment de distinguer les appuis courts et les appuis longs, ce qui permet d’associer plusieurs actions différentes à un même bouton. Grâce à ce mécanisme, le système reste réactif tout en évitant de bloquer l’exécution du programme.
 
----
+
 
 ## Organisation générale du programme
 
