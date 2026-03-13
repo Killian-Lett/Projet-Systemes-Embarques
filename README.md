@@ -235,3 +235,11 @@ Dans cette boucle, le programme :
 - met à jour l’affichage LCD
 
 Cette organisation permet au système de fonctionner en continu tout en restant capable de changer de mode et de réagir aux actions de l’utilisateur.
+
+# Livrable 4- Documentation
+
+## Documentation technique
+
+## Documentatio utilisateur 
+
+
