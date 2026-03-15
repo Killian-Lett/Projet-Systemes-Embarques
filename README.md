@@ -240,6 +240,130 @@ Cette organisation permet au système de fonctionner en continu tout en restant 
 
 ## Documentation technique
 
-## Documentatio utilisateur 
+1.1 Fonctionnement global du système 
+
+Le système a pour objectif de collecter les données des capteurs de la station météo et de les enregistrer sur une carte SD afin de conserver les mesures sur une longue durée, et le prototype repose sur une carte Arduino. 
+
+Le fonctionnement du systéme se déroule sur plusieurs étapes:
+
+```mermaid
+flowchart TD
+
+A[Capteurs météo] --> B[Arduino : Acquisition des données]
+
+B --> C[Traitement et formatage des données]
+
+C --> D[Ouverture du fichier sur la carte SD]
+
+D --> E[Ecriture des mesures]
+
+E --> F[Fermeture du fichier]
+
+F --> G[Stockage sur la carte SD]
+
+G --> H[Lecture des données sur ordinateur]
+```
+
+1. Les capteurs mesurent les paramètres météorologiques (température, pression, humidité).
+
+2. L’Arduino récupère ces données.
+
+3. Les données sont formatées sous forme de ligne de texte.
+
+4. La carte SD est initialisée par le programme.
+
+5. Les données sont écrites dans un fichier d’archivage.
+
+6. Le fichier est fermé afin de sauvegarder correctement les données.
+
+Le système recommence le processus pour chaque nouvelle mesure.
+
+Le fonctionnement global du système repose sur un cycle d’acquisition et d’enregistrement des données.
+Dans un premier temps, les capteurs mesurent les différentes grandeurs physiques comme la température, la pression ou l’humidité. Ces informations sont ensuite transmises à la carte Arduino.
+L’Arduino traite ces données et les convertit dans un format exploitable. Une fois les données prêtes, le programme ouvre un fichier d’archivage sur la carte SD.
+Les mesures sont ensuite écrites dans ce fichier, puis le fichier est fermé afin d’assurer la sauvegarde correcte des informations.
+Ce processus se répète automatiquement à intervalles réguliers afin d’enregistrer les données tout au long de l’utilisation de la station météo.
+Les données enregistrées peuvent ensuite être récupérées en retirant la carte SD et en l’insérant dans un ordinateur.
+
+1.3 Architecture générale du programme
+
+# Documentation technique
+
+## Architecture générale du programme
+
+Le programme de la station météo est organisé en plusieurs modules permettant de gérer les capteurs, l’affichage, l’enregistrement des données et l’interaction avec l’utilisateur. Cette organisation modulaire facilite la compréhension du code et permet de maintenir plus facilement le système.
+
+Le programme Arduino repose sur deux fonctions principales :
+
+- `setup()` : exécutée une seule fois au démarrage du système.
+- `loop()` : exécutée en continu pendant toute la durée de fonctionnement de la station.
+
+---
+
+## Initialisation du système
+
+Lors du démarrage, la fonction `setup()` initialise tous les périphériques nécessaires au fonctionnement du système.
+
+Les éléments suivants sont configurés :
+
+- la communication série pour l’affichage des informations
+- le module GPS
+- le bus I²C pour la communication avec certains capteurs
+- l’horloge temps réel (RTC)
+- le capteur de température et d’humidité
+- le capteur de luminosité
+- l’écran LCD
+- la carte SD pour le stockage des données
+- les boutons permettant d’interagir avec le système
+
+La configuration enregistrée dans la mémoire **EEPROM** est également chargée afin de restaurer les paramètres précédemment définis.
+
+---
+
+## Organisation en modes de fonctionnement
+
+Le système possède plusieurs **modes de fonctionnement** permettant d’adapter le comportement de la station selon les besoins.
+
+| Mode | Description |
+|-----|-----|
+| **Standard** | fonctionnement normal avec acquisition et enregistrement des données |
+| **Configuration** | modification des paramètres via le port série |
+| **Maintenance** | affichage des données des capteurs sans enregistrement |
+| **Économique** | réduction de la fréquence des mesures pour économiser l’énergie |
+
+Chaque mode est associé à une fonction spécifique chargée d’exécuter les opérations correspondantes. Le programme utilise un **pointeur de fonction** permettant d’exécuter dynamiquement la fonction correspondant au mode actif.
+
+---
+
+## Acquisition et traitement des données
+
+Les données environnementales sont collectées à partir de plusieurs capteurs :
+
+- **DHT11** : mesure de la température et de l’humidité  
+- **Capteur analogique** : mesure de la luminosité  
+- **Module GPS** : récupération des coordonnées géographiques  
+- **Module RTC** : gestion de la date et de l’heure  
+
+Les informations collectées sont ensuite traitées et formatées afin d’être affichées et enregistrées dans un format lisible.
+
+---
+
+## Affichage des informations
+
+Les informations du système sont affichées sur deux interfaces :
+
+- le **moniteur série**, utilisé pour le suivi et le diagnostic
+- l’**écran LCD**, qui affiche l’heure actuelle ainsi que le mode de fonctionnement actif
+
+L’affichage est mis à jour régulièrement afin de fournir des informations en temps réel à l’utilisateur.
+
+---
+
+## Enregistrement des données
+
+Les données collectées peuvent être enregistrées sur une **carte SD** dans un fichier nommé :
+
+
+## Documentation utilisateur 
 
 
