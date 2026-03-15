@@ -654,7 +654,7 @@ La station météo du projet **Worldwide Weather Watcher** permet de collecter a
 Grâce à son interface simple (LED, boutons et écran), le système peut être utilisé facilement par l’équipage d’un navire sans connaissances techniques avancées.
 
 
-# Annexe 
+# Annexe :
 
 ## Code 
 ## Fonction du mode configuration
