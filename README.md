@@ -1,6 +1,10 @@
-# Structures logicielles du programme
+# Projet : Worldwide Weather Watcher
 
-## Structure de configuration
+# Livrable 2 : Architecture du programme
+
+# 1.Structures logicielles du programme
+
+## 1.1 Structure de configuration
 
 Dans notre programme, toutes les variables importantes du système sont regroupées dans une structure appelée `Variable`.  
 L’idée est simple : plutôt que d’avoir plein de variables dispersées dans le code, on rassemble tous les paramètres dans une seule structure.
@@ -90,7 +94,7 @@ Une signature (`EEPROM_SIGNATURE`) est utilisée pour vérifier que les données
 Si la signature ne correspond pas, le programme considère que l’EEPROM n’est pas initialisée et utilise donc les valeurs par défaut.
 
 
-## Machine à états (gestion des modes)
+## 1.2 Machine à états (gestion des modes)
 
 Le fonctionnement global du programme repose sur une **machine à états**.  
 Cela signifie que le système peut fonctionner dans plusieurs modes différents.
@@ -125,7 +129,7 @@ Le programme adapte ensuite son comportement en fonction de ce mode.
 
 
 
-## Utilisation des pointeurs de fonction
+## 1.3 Utilisation des pointeurs de fonction
 
 Pour gérer les différents modes de manière plus propre, le programme utilise un **pointeur de fonction**.
 
@@ -170,7 +174,7 @@ Cette technique rend le code beaucoup plus propre et évite d’avoir de nombreu
 
 
 
-## Gestion des boutons
+## 1.4 Gestion des boutons
 
 L’utilisateur peut interagir avec le système grâce à deux boutons :
 
@@ -201,7 +205,7 @@ Selon la durée de l’appui, différentes actions peuvent être exécutées, co
 
 
 
-## Organisation générale du programme
+## 1.5 Organisation générale du programme
 
 Comme tous les programmes Arduino, celui-ci est organisé autour de deux fonctions principales :
 
@@ -240,7 +244,7 @@ Cette organisation permet au système de fonctionner en continu tout en restant 
 
 ## Documentation technique
 
-1.1 Fonctionnement global du système 
+## 1. Fonctionnement global du système 
 
 Le système a pour objectif de collecter les données des capteurs de la station météo et de les enregistrer sur une carte SD afin de conserver les mesures sur une longue durée, et le prototype repose sur une carte Arduino. 
 
@@ -613,7 +617,7 @@ Ce mode est utile lorsque la station fonctionne sur batterie.
 
 # 9. Utilisation du système
 
-## Démarrage
+## 9.1 Démarrage
 
 1. Alimenter la station météo
 2. Le système démarre automatiquement en **mode standard**
@@ -622,7 +626,7 @@ Ce mode est utile lorsque la station fonctionne sur batterie.
 
 
 
-## Vérification du fonctionnement
+## 9.2 Vérification du fonctionnement
 
 L’utilisateur doit vérifier :
 
