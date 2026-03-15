@@ -2,9 +2,6 @@
 <img src="https://github.com/user-attachments/assets/c605a6e3-e9f1-4856-9986-ccf4045c3a47" width="100%" height="300px" />
 
 # Livrable 2 : Architecture du programme
-# Projet : Worldwide Weather Watcher
-
-# Livrable 2 : Architecture du programme
 
 # 1. Les diagrammes UML/SysML
 
@@ -163,7 +160,7 @@ end
 
 # 2.Structures logicielles du programme
 
-## 1.1 Structure de configuration
+## 2.1 Structure de configuration
 
 Dans notre programme, toutes les variables importantes du système sont regroupées dans une structure appelée `Variable`.  
 L’idée est simple : plutôt que d’avoir plein de variables dispersées dans le code, on rassemble tous les paramètres dans une seule structure.
@@ -217,7 +214,7 @@ Cela permet d’avoir toutes les valeurs par défaut directement au démarrage d
 
 
 
-## Sauvegarde des paramètres dans l’EEPROM
+## 2.2 Sauvegarde des paramètres dans l’EEPROM
 
 Pour éviter de perdre les paramètres lors d’un redémarrage du système, la configuration peut être sauvegardée dans la mémoire **EEPROM**.
 
@@ -253,7 +250,7 @@ Une signature (`EEPROM_SIGNATURE`) est utilisée pour vérifier que les données
 Si la signature ne correspond pas, le programme considère que l’EEPROM n’est pas initialisée et utilise donc les valeurs par défaut.
 
 
-## 1.2 Machine à états (gestion des modes)
+## 2.3 Machine à états (gestion des modes)
 
 Le fonctionnement global du programme repose sur une **machine à états**.  
 Cela signifie que le système peut fonctionner dans plusieurs modes différents.
@@ -288,7 +285,7 @@ Le programme adapte ensuite son comportement en fonction de ce mode.
 
 
 
-## 1.3 Utilisation des pointeurs de fonction
+## 2.4 Utilisation des pointeurs de fonction
 
 Pour gérer les différents modes de manière plus propre, le programme utilise un **pointeur de fonction**.
 
@@ -333,7 +330,7 @@ Cette technique rend le code beaucoup plus propre et évite d’avoir de nombreu
 
 
 
-## 1.4 Gestion des boutons
+## 2.5 Gestion des boutons
 
 L’utilisateur peut interagir avec le système grâce à deux boutons :
 
@@ -364,7 +361,7 @@ Selon la durée de l’appui, différentes actions peuvent être exécutées, co
 
 
 
-## 1.5 Organisation générale du programme
+## 2.6 Organisation générale du programme
 
 Comme tous les programmes Arduino, celui-ci est organisé autour de deux fonctions principales :
 
@@ -401,9 +398,9 @@ Cette organisation permet au système de fonctionner en continu tout en restant 
 
 # Livrable 4- Documentation
 
-## Documentation technique
+# Documentation technique
 
-## 1. Fonctionnement global du système 
+# 1. Fonctionnement global du système 
 
 Le système a pour objectif de collecter les données des capteurs de la station météo et de les enregistrer sur une carte SD afin de conserver les mesures sur une longue durée, et le prototype repose sur une carte Arduino. 
 
@@ -448,7 +445,7 @@ Les mesures sont ensuite écrites dans ce fichier, puis le fichier est fermé af
 Ce processus se répète automatiquement à intervalles réguliers afin d’enregistrer les données tout au long de l’utilisation de la station météo.
 Les données enregistrées peuvent ensuite être récupérées en retirant la carte SD et en l’insérant dans un ordinateur.
 
-## 2. Architecture générale du programme
+# 2. Architecture générale du programme
 
 Le programme de la station météo est organisé en plusieurs modules permettant de gérer les capteurs, l’affichage, l’enregistrement des données et l’interaction avec l’utilisateur. Cette organisation modulaire facilite la compréhension du code et permet de maintenir plus facilement le système.
 
@@ -459,7 +456,7 @@ Le programme Arduino repose sur deux fonctions principales :
 
 ---
 
-## 3. Initialisation du système
+# 3. Initialisation du système
 
 Lors du démarrage, la fonction `setup()` initialise tous les périphériques nécessaires au fonctionnement du système.
 
@@ -479,7 +476,7 @@ La configuration enregistrée dans la mémoire **EEPROM** est également chargé
 
 ---
 
-## 4. Organisation en modes de fonctionnement
+# 4. Organisation en modes de fonctionnement
 
 Le système possède plusieurs **modes de fonctionnement** permettant d’adapter le comportement de la station selon les besoins.
 
@@ -494,7 +491,7 @@ Chaque mode est associé à une fonction spécifique chargée d’exécuter les 
 
 ---
 
-## 5. Acquisition et traitement des données
+# 5. Acquisition et traitement des données
 
 Les données environnementales sont collectées à partir de plusieurs capteurs :
 
@@ -507,7 +504,7 @@ Les informations collectées sont ensuite traitées et formatées afin d’être
 
 ---
 
-## 6. Affichage des informations
+# 6. Affichage des informations
 
 Les informations du système sont affichées sur deux interfaces :
 
@@ -518,7 +515,7 @@ L’affichage est mis à jour régulièrement afin de fournir des informations e
 
 ---
 
-## 7. Enregistrement des données
+# 7. Enregistrement des données
 
 Les données collectées peuvent être enregistrées sur une **carte SD** dans un fichier nommé :
 
