@@ -479,11 +479,14 @@ Chaque ligne du fichier contient :
 
 L’utilisateur interagit avec le système grâce à :
 
-- 2 boutons poussoirs
 - une LED RGB
 - un écran LCD
 
 ![download](https://github.com/user-attachments/assets/8b9ee5fe-0bf3-465e-902a-0de55b64eebe)
+
+- 2 boutons poussoirs
+  
+![shopping](https://github.com/user-attachments/assets/c52a2eb6-8db0-4110-a559-34139f8263cd)
 
 Ces éléments permettent de **contrôler les modes du système et vérifier son état de fonctionnement**.
 
