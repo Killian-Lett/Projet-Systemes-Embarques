@@ -285,11 +285,7 @@ Les mesures sont ensuite écrites dans ce fichier, puis le fichier est fermé af
 Ce processus se répète automatiquement à intervalles réguliers afin d’enregistrer les données tout au long de l’utilisation de la station météo.
 Les données enregistrées peuvent ensuite être récupérées en retirant la carte SD et en l’insérant dans un ordinateur.
 
-1.3 Architecture générale du programme
-
-# Documentation technique
-
-## Architecture générale du programme
+## 2. Architecture générale du programme
 
 Le programme de la station météo est organisé en plusieurs modules permettant de gérer les capteurs, l’affichage, l’enregistrement des données et l’interaction avec l’utilisateur. Cette organisation modulaire facilite la compréhension du code et permet de maintenir plus facilement le système.
 
@@ -300,7 +296,7 @@ Le programme Arduino repose sur deux fonctions principales :
 
 ---
 
-## Initialisation du système
+## 3. Initialisation du système
 
 Lors du démarrage, la fonction `setup()` initialise tous les périphériques nécessaires au fonctionnement du système.
 
@@ -320,7 +316,7 @@ La configuration enregistrée dans la mémoire **EEPROM** est également chargé
 
 ---
 
-## Organisation en modes de fonctionnement
+## 4. Organisation en modes de fonctionnement
 
 Le système possède plusieurs **modes de fonctionnement** permettant d’adapter le comportement de la station selon les besoins.
 
@@ -335,7 +331,7 @@ Chaque mode est associé à une fonction spécifique chargée d’exécuter les 
 
 ---
 
-## Acquisition et traitement des données
+## 5. Acquisition et traitement des données
 
 Les données environnementales sont collectées à partir de plusieurs capteurs :
 
@@ -348,7 +344,7 @@ Les informations collectées sont ensuite traitées et formatées afin d’être
 
 ---
 
-## Affichage des informations
+## 6. Affichage des informations
 
 Les informations du système sont affichées sur deux interfaces :
 
@@ -359,14 +355,14 @@ L’affichage est mis à jour régulièrement afin de fournir des informations e
 
 ---
 
-## Enregistrement des données
+## 7. Enregistrement des données
 
 Les données collectées peuvent être enregistrées sur une **carte SD** dans un fichier nommé :
 
 
 
 
-## Documentation utilisateur - Station météo embarquée
+# Documentation utilisateur - Station météo embarquée
 
 
 
@@ -554,13 +550,11 @@ Ces signaux permettent **d’identifier rapidement un problème matériel ou log
 
 # 8. Modes de fonctionnement
 
-La station météo possède **4 modes de fonctionnement**.
+## La station météo possède **4 modes de fonctionnement**.
 
+## 8.1 Mode Standard
 
-
-# 8.1 Mode Standard
-
-## Le **mode standard** est le mode normal de fonctionnement.
+ Le **mode standard** est le mode normal de fonctionnement.
 
 Fonctionnement :
 
@@ -574,7 +568,7 @@ Les données sont enregistrées sous forme de lignes horodatées dans un fichier
 
 
 
-# 8.2 Mode Configuration
+## 8.2 Mode Configuration
 
 Ce mode permet de **configurer les paramètres du système** via l’interface série.
 
@@ -589,7 +583,7 @@ Le système revient automatiquement en **mode standard après 30 minutes sans ac
 
 
 
-# 8.3 Mode Maintenance
+## 8.3 Mode Maintenance
 
 Dans ce mode :
 
@@ -604,7 +598,7 @@ Ce mode est utilisé pour :
 
 
 
-# 8.4 Mode Économique
+## 8.4 Mode Économique
 
 Ce mode permet **d’économiser de l’énergie**.
 
