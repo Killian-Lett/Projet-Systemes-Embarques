@@ -450,6 +450,8 @@ Ces données permettent de **localiser précisément la position du navire lors 
 Module utilisé :
 
 - RTC DS1307
+  
+![download](https://github.com/user-attachments/assets/9cfd8c73-e0d1-4231-a76b-4aabe227cd6c)
 
 Fonction :
 
