@@ -1,6 +1,8 @@
 # Projet : Worldwide Weather Watcher
 <img src="https://github.com/user-attachments/assets/c605a6e3-e9f1-4856-9986-ccf4045c3a47" width="100%" height="300px" />
 
+## Erradi Hatim; Sacha Lagnitre; Lett Killian; Cid Clément 
+
 # Livrable 2 : Architecture du programme
 
 # 1. Les diagrammes UML/SysML
