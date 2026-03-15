@@ -578,7 +578,7 @@ Les données sont enregistrées sous forme de lignes horodatées dans un fichier
 
 Ce mode permet de **configurer les paramètres du système** via l’interface série.
 
-Exemples de commandes :
+Exemples de commandes (voire en annexe le reste) :
 
 LOG_INTERVAL=10
 RESET
@@ -660,3 +660,18 @@ Grâce à son interface simple (LED, boutons et écran), le système peut être 
 
 ## Code 
 ## Fonction du mode configuration
+
+| Paramètre      | Description                                                                 | Exemple de commande    |
+|----------------|-----------------------------------------------------------------------------|-----------------------|
+| LUMIN          | définition de l’activation (1)/désactivation (0) du capteur de luminosité  | LUMIN=1               |
+| LUMIN_LOW      | définition de la valeur en dessous de laquelle la luminosité est considérée comme "faible" | LUMIN_LOW=200         |
+| LUMIN_HIGH     | définition de la valeur au-dessus de laquelle la luminosité est considérée comme "forte" | LUMIN_HIGH=700        |
+| TEMP_AIR       | définition de l’activation (1)/désactivation (0) du capteur de température de l’air | TEMP_AIR=0            |
+| MIN_TEMP_AIR   | définition du seuil de température de l’air (en °C) en dessous duquel le capteur se mettra en erreur | MIN_TEMP_AIR=-5       |
+| MAX_TEMP_AIR   | définition du seuil de température de l’air (en °C) au-dessus duquel le capteur se mettra en erreur | MAX_TEMP_AIR=30       |
+| HYGR           | définition de l’activation (1)/désactivation (0) du capteur d’humidité      | HYGR=1                |
+| HYGR_MINT      | définition de la température en dessous de laquelle les mesures d’hygrométrie ne seront pas prises en compte | HYGR_MINT=0           |
+| HYGR_MAXT      | définition de la température au-dessus de laquelle les mesures d’hygrométrie ne seront pas prises en compte | HYGR_MAXT=50          |
+| PRESSURE       | définition de l’activation (1)/désactivation (0) du capteur de pression atmosphérique | PRESSURE=0           |
+| PRESSURE_MIN   | définition du seuil de pression atmosphérique (en hPa) en dessous duquel le capteur se mettra en erreur | PRESSURE_MIN=450      |
+| PRESSURE_MAX   | définition du seuil de pression atmosphérique (en hPa) au-dessus duquel le capteur se mettra en erreur | PRESSURE_MAX=1030     |
