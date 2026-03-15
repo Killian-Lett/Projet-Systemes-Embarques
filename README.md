@@ -428,7 +428,9 @@ Mesures :
 
 Capteur analogique permettant de mesurer l’intensité lumineuse ambiante.
 
----
+![download](https://github.com/user-attachments/assets/a4f73116-d5f9-4859-a801-2bbb3d651a27)
+
+
 
 ### Position GPS
 
