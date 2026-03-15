@@ -818,7 +818,8 @@ Grâce à son interface simple (LED, boutons et écran), le système peut être 
 # Annexe :
 
 ## Code 
-#include <ChainableLED.h>   // 1698 octets (82%)
+```cpp
+#include <ChainableLED.h>  
 #include "rgb_lcd.h"
 #include <Wire.h>
 #include "RTClib.h"
@@ -1367,6 +1368,7 @@ void loop(){
   if(erreurActuelle != ERREUR_AUCUNE) gererLEDErreur();
   delay(50);
 }
+```
 ## Fonction du mode configuration
 
 | Paramètre      | Description                                                                 | Exemple de commande    |
