@@ -2,8 +2,166 @@
 <img src="https://github.com/user-attachments/assets/8351741f-befe-4945-89e6-c5c0fda5d815" width="100%" height="300px" />
 
 # Livrable 2 : Architecture du programme
+# Projet : Worldwide Weather Watcher
 
-# 1.Structures logicielles du programme
+# Livrable 2 : Architecture du programme
+
+# 1. Les diagrammes UML/SysML
+
+## 1.1 Diagramme d'activité :
+
+Ce diagramme d'activité décrit le fonctionnement général de la station météo et la gestion des différents modes du système.
+
+Au démarrage, la station initialise le microcontrôleur ainsi que tous les périphériques nécessaires : capteurs météorologiques, horloge temps réel (RTC) et carte SD.
+
+En mode standard, la LED verte est allumée en continu et la station effectue périodiquement les opérations suivantes :
+
+* lecture des capteurs (température, humidité, pression, GPS),
+* récupération de la date et de l’heure via le module RTC,
+* sauvegarde des données sur la carte SD.
+
+Le système vérifie régulièrement si un bouton a été pressé afin de changer de mode de fonctionnement.
+
+Trois modes supplémentaires sont disponibles :
+
+* **Mode configuration** : permet à l’utilisateur de modifier les paramètres via une console.
+* **Mode maintenance** : permet de consulter directement les mesures sans enregistrer de données.
+* **Mode économique** : réduit la fréquence d’acquisition afin de diminuer la consommation énergétique.
+
+Après une période d’inactivité, le système revient automatiquement au mode standard.
+
+```mermaid
+flowchart TD
+
+A[Début] --> B[Allumer la station météo]
+
+B --> C{Bouton rouge pressé ?}
+
+C -- Non --> D[Mode standard<br>LED verte]
+
+D --> E[Initialiser microcontrôleur<br>capteurs RTC carte SD]
+E --> F[Lire date et heure]
+F --> G[Lire données capteurs actifs]
+G --> H[Stocker données dans la carte SD]
+
+H --> I{10 min écoulées ?}
+
+I -- Non --> I
+I -- Oui --> J{Quel bouton ?}
+
+J --> K{Bouton rouge pressé 5s ?}
+J --> L{Bouton vert pressé 5s ?}
+
+K -- Oui --> M[Mode maintenance<br>LED orange]
+M --> N[Consultation directe<br>écriture SD retirée]
+
+N --> O{Bouton rouge pressé 5s ?}
+O -- Oui --> D
+
+L -- Oui --> P[Mode économique<br>LED bleu]
+P --> Q[Acquisition GPS réduite<br>LOG_INTERVAL x2]
+
+Q --> R{Bouton rouge pressé 5s ?}
+R -- Oui --> D
+
+C -- Oui --> S[Mode configuration<br>LED jaune]
+
+S --> T[Acquisition capteurs désactivée]
+T --> U[Commande utilisateur]
+
+U --> V{Inactivité 30 min ?}
+
+V -- Oui --> D
+V -- Non --> U
+```
+
+## 1.2 Diagramme de séquence: 
+
+Ce diagramme de séquence représente les interactions entre les différents composants du système : l’utilisateur, le microcontrôleur, les capteurs météorologiques, la carte SD, l’horloge RTC et les interfaces d’affichage.
+
+En mode standard, le microcontrôleur lit périodiquement les mesures fournies par les capteurs, récupère la date et l’heure depuis le module RTC, puis enregistre les données sur la carte SD.
+
+Lorsque l’utilisateur appuie sur un bouton, le microcontrôleur peut changer de mode de fonctionnement :
+
+* **Mode configuration** : activation de la console pour modifier les paramètres du système.
+* **Mode maintenance** : affichage des mesures sans enregistrement.
+* **Mode économique** : réduction de la fréquence d’acquisition pour économiser l’énergie.
+
+Le diagramme illustre également les conditions permettant de revenir au mode standard après une période d’inactivité ou après une action de l’utilisateur.
+
+```mermaid
+sequenceDiagram
+
+participant U as Utilisateur
+participant B as Bouton poussoir
+participant MCU as Microcontrôleur
+participant S as Capteurs météo
+participant SD as Carte SD
+participant RTC as Horloge RTC
+participant LED as LED RGB
+participant C as Console
+
+Note over MCU: Mode Standard
+
+MCU->>LED: LED verte continue
+
+loop Toutes les LOG_INTERVAL
+MCU->>S: Lire mesures
+MCU->>RTC: Lire date/heure
+MCU->>SD: Sauvegarder données
+end
+
+alt Bouton rouge pressé
+MCU->>LED: Mode configuration
+end
+
+alt Bouton rouge pressé 5s
+MCU->>LED: Mode maintenance
+end
+
+alt Bouton vert pressé 5s
+MCU->>LED: Mode économique
+end
+
+Note over MCU: Mode Configuration
+
+MCU->>LED: LED jaune
+MCU->>C: Activer console configuration
+C->>MCU: Commandes utilisateur
+MCU->>MCU: Mise à jour paramètres
+
+opt 30 min inactivité
+MCU->>LED: Retour mode standard
+end
+
+Note over MCU: Mode Maintenance
+
+MCU->>LED: LED orange
+MCU->>S: Afficher mesures
+MCU->>SD: Écriture désactivée
+
+opt Bouton rouge 5s
+MCU->>LED: Retour mode précédent
+end
+
+Note over MCU: Mode Économique
+
+MCU->>LED: LED bleu
+
+loop Toutes les LOG_INTERVAL x2
+MCU->>S: Lire mesures (GPS réduit)
+MCU->>RTC: Lire date
+MCU->>SD: Sauvegarder
+end
+
+opt Bouton rouge 5s
+MCU->>LED: Retour mode standard
+end
+
+```
+
+
+# 2.Structures logicielles du programme
 
 ## 1.1 Structure de configuration
 
