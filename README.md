@@ -464,6 +464,8 @@ Fonction :
 
 Un lecteur de carte SD permet de **stocker les données météorologiques enregistrées**.
 
+![shopping](https://github.com/user-attachments/assets/b9a14e56-190b-448f-9524-95bf7159e98f)
+
 Chaque ligne du fichier contient :
 
 - la date
