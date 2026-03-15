@@ -1,4 +1,5 @@
 # Projet : Worldwide Weather Watcher
+![download](https://github.com/user-attachments/assets/8351741f-befe-4945-89e6-c5c0fda5d815)
 
 # Livrable 2 : Architecture du programme
 
