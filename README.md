@@ -560,7 +560,7 @@ La station météo possède **4 modes de fonctionnement**.
 
 # 8.1 Mode Standard
 
-Le **mode standard** est le mode normal de fonctionnement.
+## Le **mode standard** est le mode normal de fonctionnement.
 
 Fonctionnement :
 
