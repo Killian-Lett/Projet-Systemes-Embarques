@@ -661,7 +661,7 @@ void resetParametres() {
 }
 ```
 
-Cette fonction est utile en cas d’erreur de configuration ou simplement si l’utilisateur veut repartir d’une base propre.
+Cette fonction est utilisée avec la commande RESET lorsque le programme est en mode configuration.
 
 
 
