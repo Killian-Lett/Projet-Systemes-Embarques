@@ -413,8 +413,9 @@ La station mesure plusieurs paramètres environnementaux.
 ### Température et humidité
 
 Capteur utilisé :
-
 - DHT11
+  
+![download](https://github.com/user-attachments/assets/8df139e2-3f7f-468d-822c-bbb0cbf8f07f)
 
 Mesures :
 
