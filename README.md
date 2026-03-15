@@ -480,6 +480,9 @@ Chaque ligne du fichier contient :
 L’utilisateur interagit avec le système grâce à :
 
 - une LED RGB
+
+  ![download](https://github.com/user-attachments/assets/8ab240c0-0d9d-4532-861f-c0393dcac5e6)
+  
 - un écran LCD
 
 ![download](https://github.com/user-attachments/assets/8b9ee5fe-0bf3-465e-902a-0de55b64eebe)
