@@ -364,6 +364,280 @@ L’affichage est mis à jour régulièrement afin de fournir des informations e
 Les données collectées peuvent être enregistrées sur une **carte SD** dans un fichier nommé :
 
 
-## Documentation utilisateur 
 
+
+## Documentation utilisateur - Station météo embarquée
+
+
+
+# 1. Contexte du projet
+
+Dans le cadre du projet **Worldwide Weather Watcher**, l’Agence Internationale pour la Vigilance Météorologique (AIVM) souhaite améliorer la surveillance des phénomènes météorologiques dangereux comme les cyclones et tempêtes tropicales.
+
+Pour cela, l’agence déploie des **stations météo embarquées sur des navires commerciaux**. Ces stations permettent de mesurer et enregistrer plusieurs paramètres environnementaux importants afin de mieux comprendre et anticiper les phénomènes météorologiques extrêmes.
+
+Le système doit être :
+
+- simple à utiliser
+- fiable en environnement maritime
+- accessible à un membre de l’équipage sans compétences techniques avancées
+
+Cette documentation a pour objectif de **guider l’utilisateur final dans l’utilisation de la station météo embarquée**.
+
+
+
+# 2. Présentation du système
+
+La station météo est un système embarqué basé sur un microcontrôleur qui collecte et enregistre plusieurs données météorologiques.
+
+Le système repose sur :
+
+- Arduino Uno  
+- microcontrôleur ATmega328
+
+Le microcontrôleur gère :
+
+- l’acquisition des données des capteurs
+- l’enregistrement des données
+- les modes de fonctionnement
+- l’interface utilisateur (LED, boutons, écran)
+
+
+
+# 3. Composants du système
+
+## 3.1 Capteurs météorologiques
+
+La station mesure plusieurs paramètres environnementaux.
+
+### Température et humidité
+
+Capteur utilisé :
+
+- DHT11
+
+Mesures :
+
+- température de l’air
+- humidité relative
+
+
+
+### Luminosité
+
+Capteur analogique permettant de mesurer l’intensité lumineuse ambiante.
+
+---
+
+### Position GPS
+
+Le module GPS permet d’obtenir :
+
+- la latitude
+- la longitude
+
+Ces données permettent de **localiser précisément la position du navire lors de chaque mesure**.
+
+
+
+### Horloge temps réel
+
+Module utilisé :
+
+- RTC DS1307
+
+Fonction :
+
+- fournir la date et l’heure
+- horodater les données enregistrées
+
+
+
+### Carte SD
+
+Un lecteur de carte SD permet de **stocker les données météorologiques enregistrées**.
+
+Chaque ligne du fichier contient :
+
+- la date
+- l’heure
+- les données des capteurs
+- la position GPS
+
+
+
+# 4. Interface utilisateur
+
+L’utilisateur interagit avec le système grâce à :
+
+- 2 boutons poussoirs
+- une LED RGB
+- un écran LCD
+
+Ces éléments permettent de **contrôler les modes du système et vérifier son état de fonctionnement**.
+
+
+
+# 5. Boutons de contrôle
+
+## Bouton rouge
+
+Le bouton rouge permet d’accéder aux modes avancés.
+
+**Appui court :**
+
+→ passage en **mode configuration**
+
+**Appui long (5 secondes) :**
+
+→ passage en **mode maintenance**
+
+Si le système est déjà en mode maintenance, un appui long permet de **revenir au mode précédent**.
+
+
+
+## Bouton vert
+
+**Appui long (5 secondes) :**
+
+→ activation du **mode économique**
+
+Ce mode est accessible uniquement depuis le mode standard.
+
+
+
+# 6. Indicateurs LED
+
+Une LED RGB indique l’état du système.
+
+| Couleur LED | État du système |
+|-------------|----------------|
+| Vert | Mode standard |
+| Jaune | Mode configuration |
+| Bleu | Mode économique |
+| Orange | Mode maintenance |
+
+Ces couleurs permettent à l’utilisateur **d’identifier rapidement le mode actif du système**.
+
+
+
+# 7. Signaux d’erreur
+
+Certaines combinaisons de couleurs indiquent une erreur.
+
+| Signal LED | Signification |
+|------------|--------------|
+| Rouge + Bleu clignotant | erreur horloge RTC |
+| Rouge + Jaune clignotant | erreur GPS |
+| Rouge + Vert clignotant | erreur capteur |
+| Rouge + Vert clignotant (vert plus long) | données capteur incohérentes |
+| Rouge + Blanc clignotant | carte SD pleine |
+| Rouge + Blanc clignotant (blanc plus long) | erreur écriture carte SD |
+
+Ces signaux permettent **d’identifier rapidement un problème matériel ou logiciel**.
+
+
+
+# 8. Modes de fonctionnement
+
+La station météo possède **4 modes de fonctionnement**.
+
+
+
+# 8.1 Mode Standard
+
+Le **mode standard** est le mode normal de fonctionnement.
+
+Fonctionnement :
+
+- acquisition des données des capteurs
+- enregistrement sur la carte SD
+- affichage sur l’écran LCD
+
+Les mesures sont effectuées **toutes les 10 minutes par défaut**.
+
+Les données sont enregistrées sous forme de lignes horodatées dans un fichier de log.
+
+
+
+# 8.2 Mode Configuration
+
+Ce mode permet de **configurer les paramètres du système** via l’interface série.
+
+Exemples de commandes :
+
+LOG_INTERVAL=10
+RESET
+VERSION
+
+
+Le système revient automatiquement en **mode standard après 30 minutes sans activité**.
+
+
+
+# 8.3 Mode Maintenance
+
+Dans ce mode :
+
+- les données ne sont **plus écrites sur la carte SD**
+- les capteurs peuvent être **consultés en direct sur le port série**
+- la carte SD peut être retirée **sans risque de corruption des données**
+
+Ce mode est utilisé pour :
+
+- diagnostic
+- maintenance du système
+
+
+
+# 8.4 Mode Économique
+
+Ce mode permet **d’économiser de l’énergie**.
+
+Modifications du fonctionnement :
+
+- acquisition GPS seulement **une mesure sur deux**
+- intervalle entre mesures **multiplié par 2**
+
+Ce mode est utile lorsque la station fonctionne sur batterie.
+
+
+
+# 9. Utilisation du système
+
+## Démarrage
+
+1. Alimenter la station météo
+2. Le système démarre automatiquement en **mode standard**
+3. La LED devient **verte**
+4. Les mesures commencent automatiquement
+
+
+
+## Vérification du fonctionnement
+
+L’utilisateur doit vérifier :
+
+- la couleur de la LED
+- l’affichage sur l’écran LCD
+- la présence des fichiers sur la carte SD
+
+
+
+# 10. Maintenance simple
+
+En cas de problème :
+
+1. vérifier l’alimentation du système
+2. vérifier la présence de la carte SD
+3. vérifier les connexions des capteurs
+4. redémarrer le système
+
+
+
+# Conclusion
+
+La station météo du projet **Worldwide Weather Watcher** permet de collecter automatiquement des données environnementales importantes pour la surveillance météorologique mondiale.
+
+Grâce à son interface simple (LED, boutons et écran), le système peut être utilisé facilement par l’équipage d’un navire sans connaissances techniques avancées.
 
