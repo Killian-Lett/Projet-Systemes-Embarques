@@ -483,6 +483,8 @@ L’utilisateur interagit avec le système grâce à :
 - une LED RGB
 - un écran LCD
 
+![download](https://github.com/user-attachments/assets/8b9ee5fe-0bf3-465e-902a-0de55b64eebe)
+
 Ces éléments permettent de **contrôler les modes du système et vérifier son état de fonctionnement**.
 
 
