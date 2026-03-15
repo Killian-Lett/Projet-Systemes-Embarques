@@ -434,6 +434,8 @@ Capteur analogique permettant de mesurer l’intensité lumineuse ambiante.
 
 ### Position GPS
 
+![download](https://github.com/user-attachments/assets/4bd5acda-7d7a-48ae-a015-04f5725c633f)
+
 Le module GPS permet d’obtenir :
 
 - la latitude
