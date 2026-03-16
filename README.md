@@ -330,7 +330,7 @@ struct Variable {
   bool PRESSURE; int PRESSURE_MIN, PRESSURE_MAX;
 };
 ```
-On va retrouve si dessous la fonction TraiterCommande qui est l'outil principal pour traiter les commandes sur le serial monitor lors du passage en mode configuration.
+On va retrouver ci-dessous la fonction TraiterCommande qui est l'outil principal pour traiter les commandes sur le serial monitor lors du passage en mode configuration.
 ```cpp
 void traiterCommande(String &cmd) {
   cmd.trim();
