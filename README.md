@@ -448,9 +448,41 @@ Elle initialise :
 - la carte SD
 - les interruptions des boutons
 - la configuration EEPROM
+```
+void setup() {
+  Serial.begin(9600);
+  gpsSerial.begin(9600);
+  Wire.begin();
 
+  if (!rtcRunning()) {
+    Serial.println(F("RTC arrete, init..."));
+    rtcAdjust();
+  }
 
+  dht.begin();
+  pinMode(LUMIN_PIN,    INPUT);
+  pinMode(BOUTON_ROUGE, INPUT_PULLUP);
+  pinMode(BOUTON_VERT,  INPUT_PULLUP);
 
+  lcd.begin(16, 2);
+  lcd.setRGB(0, 255, 0);
+
+  if (!SD.begin(SD_CS)) {
+    Serial.println(F("Err SD!"));
+  } else {
+    Serial.println(F("SD OK"));
+    if (SD.exists("meteo.txt")) { SD.remove("meteo.txt"); Serial.println(F("Log efface")); }
+  }
+
+  attachInterrupt(digitalPinToInterrupt(BOUTON_ROUGE), ISR_boutonRouge, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(BOUTON_VERT),  ISR_boutonVert,  CHANGE);
+
+  chargerEEPROM();
+  modeActuel = STANDARD;
+  updateModeHandler();
+  Serial.println(F("Systeme demarre."));
+}
+````
 ## 2.16 Fonction loop()
 
 La fonction `loop()` correspond à la boucle principale du programme.
@@ -462,6 +494,29 @@ Elle effectue en continu :
 - gestion du timeout du mode configuration
 - exécution du mode actif
 - mise à jour de l’écran LCD
+
+```
+void loop() {
+  unsigned long now = millis();
+
+  readGPS(); // lecture permanente du buffer GPS
+
+  traiterBouton(BOUTON_ROUGE, rougeEvent, debutRouge, lastDebounceRouge, rougeCourte, rougeLongue);
+  traiterBouton(BOUTON_VERT,  vertEvent,  debutVert,  lastDebounceVert,  nullptr,     vertLongue);
+
+  if (modeActuel == CONFIGURATION && now - derniereActivite >= config.CONFIG_TIMEOUT) {
+    modeActuel = STANDARD;
+    lastLCDRefresh = 0;
+    updateModeHandler();
+  }
+
+  if (modeHandler) modeHandler();
+  afficherLCD();
+
+  delay(50);
+}
+
+```
 
 Le programme fonctionne ainsi en permanence tant que la carte Arduino est alimentée.
 
