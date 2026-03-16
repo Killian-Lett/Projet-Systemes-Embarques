@@ -431,7 +431,37 @@ Elle réalise :
 - récupération des coordonnées GPS
 - affichage sur le port série
 - enregistrement sur la carte SD
+```cpp
+void afficherEtEnregistrer(bool ecrireSD) {
+  DateTime t   = rtcNow();
+  float temp   = dht.readTemperature();
+  float hum    = dht.readHumidity();
+  int   lum    = analogRead(LUMIN_PIN);
+  bool  dhtOK  = !isnan(temp) && !isnan(hum);
 
+  // --- Série ---
+  afficherHeure(Serial, t);
+  if (dhtOK) { Serial.print(F(" | T:")); Serial.print(temp, 1); Serial.print(F("C | H:")); Serial.print(hum, 1); Serial.print('%'); }
+  else          Serial.print(F(" | T:ERR | H:ERR"));
+  Serial.print(F(" | L:")); Serial.print(lum);
+  if (gpsData.valid) { Serial.print(F(" | Lat:")); Serial.print(gpsData.lat, 6); Serial.print(F(" Lon:")); Serial.print(gpsData.lon, 6); }
+  else                 Serial.print(F(" | GPS:-"));
+  Serial.println();
+
+  // --- Carte SD ---
+  if (!ecrireSD) return;
+  File f = SD.open("meteo.txt", FILE_WRITE);
+  if (f) {
+    afficherHeure(f, t);
+    if (dhtOK) { f.print(F(" | T:")); f.print(temp, 1); f.print(F("C | H:")); f.print(hum, 1); f.print('%'); }
+    else          f.print(F(" | T:ERR | H:ERR"));
+    f.print(F(" | L:")); f.print(lum);
+    if (gpsData.valid) { f.print(F(" | Lat:")); f.print(gpsData.lat, 6); f.print(F(" Lon:")); f.print(gpsData.lon, 6); }
+    else                 f.print(F(" | GPS:-"));
+    f.println(); f.close();
+  } else Serial.println(F("Err SD!"));
+}
+```
 
 
 ## 2.15 Fonction setup()
