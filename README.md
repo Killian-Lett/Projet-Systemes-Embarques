@@ -330,8 +330,40 @@ struct Variable {
   bool PRESSURE; int PRESSURE_MIN, PRESSURE_MAX;
 };
 ```
+On va retrouve si dessous la fonction TraiterCommande qui est l'outil principal pour les commandes sur le serial monitor lors du passage en mode configuration.
+```cpp
+void traiterCommande(String &cmd) {
+  cmd.trim();
+  if (cmd == F("RESET"))   { resetParametres(); return; }
+  if (cmd == F("VERSION")) { Serial.println(F("Station Meteo v1.0")); return; }
 
+  int sep = cmd.indexOf('=');
+  if (sep < 0) { Serial.println(F("Syntaxe: CLE=VALEUR")); return; }
 
+  String var = cmd.substring(0, sep);
+  int    val = cmd.substring(sep + 1).toInt();
+
+  if      (var == F("LOG_INTERVAL"))     config.LOG_INTERVAL     = (unsigned int)val * 1000;
+  else if (var == F("DUREE_APPUI_LONG")) config.DUREE_APPUI_LONG = (unsigned int)val * 1000;
+  else if (var == F("CONFIG_TIMEOUT"))   config.CONFIG_TIMEOUT   = (unsigned int)val * 1000;
+  else if (var == F("LUMIN"))            config.LUMIN            = val != 0;
+  else if (var == F("LUMIN_LOW"))        config.LUMIN_LOW        = val;
+  else if (var == F("LUMIN_HIGH"))       config.LUMIN_HIGH       = val;
+  else if (var == F("TEMP_AIR"))         config.TEMP_AIR         = val != 0;
+  else if (var == F("MIN_TEMP_AIR"))     config.MIN_TEMP_AIR     = val;
+  else if (var == F("MAX_TEMP_AIR"))     config.MAX_TEMP_AIR     = val;
+  else if (var == F("HYGR"))             config.HYGR             = val != 0;
+  else if (var == F("HYGR_MINT"))        config.HYGR_MINT        = val;
+  else if (var == F("HYGR_MAXT"))        config.HYGR_MAXT        = val;
+  else if (var == F("PRESSURE"))         config.PRESSURE         = val != 0;
+  else if (var == F("PRESSURE_MIN"))     config.PRESSURE_MIN     = val;
+  else if (var == F("PRESSURE_MAX"))     config.PRESSURE_MAX     = val;
+  else { Serial.println(F("Commande inconnue")); return; }
+
+  sauvegarderEEPROM();
+  Serial.print(var); Serial.println(F(" applique"));
+}
+```
 
 ## 2.9 Valeurs par défaut
 
