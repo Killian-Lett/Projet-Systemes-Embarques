@@ -165,941 +165,305 @@ end
 ## 2.1 Initialisation des périphériques
 
 Au début du programme, on initialise tous les périphériques utilisés par la station météo.  
-Le but est de déclarer dès le départ tous les composants matériels pour que le reste du code soit plus clair et plus simple à suivre.
+Le but est de déclarer dès le départ les composants matériels afin que le reste du code soit plus clair et plus simple à suivre.
 
-Dans notre programme, on retrouve par exemple :
+Dans cette version du programme, on retrouve notamment :
 
-- l’écran LCD
-- l’horloge temps réel RTC
-- le module GPS
-- la LED RGB
-- le capteur DHT11 pour la température et l’humidité
-- une liaison série logicielle pour communiquer avec le GPS
+- l’écran LCD  
+- la LED RGB  
+- le capteur DHT11 pour la température et l’humidité  
+- une liaison série logicielle pour communiquer avec le GPS  
 
-```c
-rgb_lcd      lcd;
-RTC_DS1307   rtc;
-TinyGPSPlus gps;
-
-ChainableLED led(8, 9, 1);
-DHT          dht(6, DHT11);
+```cpp
+rgb_lcd        lcd;
+ChainableLED   led(8, 9, 1);
+DHT            dht(6, DHT11);
 SoftwareSerial gpsSerial(4, 5);  // RX, TX
 ```
 
-Le programme définit aussi plusieurs constantes pour les broches utilisées.
+Le programme définit aussi plusieurs constantes pour les broches et adresses utilisées.
 
-```c
-#define LUMIN_PIN      A1
-#define BOUTON_ROUGE   2
-#define BOUTON_VERT    3
-#define SD_CS          10
+```cpp
+#define LUMIN_PIN        A1
+#define BOUTON_ROUGE     2
+#define BOUTON_VERT      3
+#define SD_CS            10
+#define RTC_ADDR         0x68
 #define EEPROM_SIGNATURE 0x42
 ```
 
-Cela permet d’éviter de mettre directement des numéros de broches dans tout le code.  
-Le programme devient donc plus lisible et plus facile à modifier si jamais le câblage change.
+Cela permet d’éviter d’utiliser directement des numéros dans le code et rend le programme plus facile à modifier.
 
 
 
-## 2.2 Structure de configuration
+## 2.2 Gestion du RTC sans bibliothèque
 
-Comme dans la première version du programme, tous les paramètres importants sont regroupés dans une structure appelée `Variable`.
+Dans cette version du programme, l’horloge temps réel **DS1307** est utilisée sans bibliothèque externe.  
+Le programme communique directement avec le composant via le bus **I2C** grâce à la bibliothèque `Wire`.
 
-L’idée est simple : au lieu d’avoir plein de variables séparées un peu partout dans le code, on rassemble toute la configuration dans une seule structure.
+Une structure simple permet de stocker l’heure.
 
-Dans cette structure, on retrouve par exemple :
+```cpp
+struct DateTime { uint8_t h, m, s; };
+```
 
-- les paramètres généraux
-- les temporisations
-- les seuils des capteurs
-- l’activation ou non de certains capteurs
-- la taille maximale du fichier de sauvegarde
+Le DS1307 utilise un format **BCD** pour stocker les valeurs.  
+Deux fonctions permettent donc de convertir les valeurs.
 
-```c
+```cpp
+static inline uint8_t bcdToDec(uint8_t v) { return (v >> 4) * 10 + (v & 0x0F); }
+static inline uint8_t decToBcd(uint8_t v) { return ((v / 10) << 4) | (v % 10); }
+```
+
+
+
+## 2.3 Lecture de l’heure RTC
+
+La fonction `rtcNow()` lit directement les registres du DS1307 pour récupérer l’heure actuelle.
+
+```cpp
+DateTime rtcNow() {
+  Wire.beginTransmission(RTC_ADDR);
+  Wire.write(0x00);
+  Wire.endTransmission();
+  Wire.requestFrom((uint8_t)RTC_ADDR, (uint8_t)3);
+  DateTime dt;
+  dt.s = bcdToDec(Wire.read() & 0x7F);
+  dt.m = bcdToDec(Wire.read());
+  dt.h = bcdToDec(Wire.read() & 0x3F);
+  return dt;
+}
+```
+
+
+
+## 2.4 Initialisation automatique du RTC
+
+Si l’horloge est arrêtée, le programme initialise automatiquement le RTC avec la date et l’heure de compilation.
+
+```cpp
+void rtcAdjust() {
+  uint8_t h = (__TIME__[0]-'0')*10 + (__TIME__[1]-'0');
+  uint8_t m = (__TIME__[3]-'0')*10 + (__TIME__[4]-'0');
+  uint8_t s = (__TIME__[6]-'0')*10 + (__TIME__[7]-'0');
+
+  Wire.beginTransmission(RTC_ADDR);
+  Wire.write(0x00);
+  Wire.write(decToBcd(s));
+  Wire.write(decToBcd(m));
+  Wire.write(decToBcd(h));
+  Wire.endTransmission();
+}
+```
+
+Cette méthode permet d’avoir une heure valide lors du premier démarrage.
+
+
+
+## 2.5 Gestion du GPS sans bibliothèque
+
+Dans cette version, le GPS est géré sans la bibliothèque **TinyGPS++**.  
+Le programme lit directement les trames **NMEA** envoyées par le module GPS.
+
+Les données sont stockées dans une structure.
+
+```cpp
+struct GPSData { double lat, lon; bool valid; };
+static GPSData gpsData = { 0.0, 0.0, false };
+```
+
+Un buffer permet de reconstruire les trames reçues.
+
+```cpp
+static char    nmeaBuf[90];
+static uint8_t nmeaIdx = 0;
+```
+
+
+
+## 2.6 Conversion des coordonnées GPS
+
+Les coordonnées GPS reçues sont au format **DDDMM.MMMM**.  
+La fonction suivante les convertit en degrés décimaux.
+
+```cpp
+static double nmea2deg(const char* s) {
+  double raw = atof(s);
+  int deg = (int)(raw / 100.0);
+  return deg + (raw - deg * 100.0) / 60.0;
+}
+```
+
+
+
+## 2.7 Lecture continue du GPS
+
+La fonction `readGPS()` lit les caractères reçus depuis le module GPS et reconstruit les trames NMEA.
+
+```cpp
+void readGPS() {
+  while (gpsSerial.available()) {
+    char c = (char)gpsSerial.read();
+    if (c == '$') nmeaIdx = 0;
+    if (nmeaIdx < sizeof(nmeaBuf) - 1) nmeaBuf[nmeaIdx++] = c;
+    if (c == '\n' || c == '\r') {
+      nmeaBuf[nmeaIdx] = '\0';
+      if (nmeaIdx > 6) parseNMEA(nmeaBuf);
+      nmeaIdx = 0;
+    }
+  }
+}
+```
+
+
+
+## 2.8 Structure de configuration
+
+Les paramètres importants du programme sont regroupés dans la structure `Variable`.
+
+```cpp
 struct Variable {
-    unsigned int DUREE_APPUI_LONG;
-    unsigned int CONFIG_TIMEOUT;
-    unsigned int LOG_INTERVAL;
-    unsigned int FILE_MAX_SIZE;
-
-    bool LUMIN;
-    int LUMIN_LOW;
-    int LUMIN_HIGH;
-
-    bool TEMP_AIR;
-    int MIN_TEMP_AIR;
-    int MAX_TEMP_AIR;
-
-    bool HYGR;
-    int HYGR_MINT;
-    int HYGR_MAXT;
-
-    bool PRESSURE;
-    int PRESSURE_MIN;
-    int PRESSURE_MAX;
+  unsigned int DUREE_APPUI_LONG, CONFIG_TIMEOUT, LOG_INTERVAL;
+  bool LUMIN; int LUMIN_LOW, LUMIN_HIGH;
+  bool TEMP_AIR; int MIN_TEMP_AIR, MAX_TEMP_AIR;
+  bool HYGR; int HYGR_MINT, HYGR_MAXT;
+  bool PRESSURE; int PRESSURE_MIN, PRESSURE_MAX;
 };
 ```
 
-Ensuite, une variable globale appelée `config` contient les paramètres actifs du système.
 
-```c
-Variable config = {
-    3000, 20000, 10000, 4096,
-    1, 255, 768,
-    1, -10, 60,
-    1, 0, 50,
-    1, 850, 1080
+
+## 2.9 Valeurs par défaut
+
+Les valeurs par défaut sont stockées en mémoire programme.
+
+```cpp
+static const Variable CONFIG_DEFAULT PROGMEM = {
+  3000, 20000, 10000,
+  true,255,768,
+  true,-10,60,
+  true,0,50,
+  true,850,1080
 };
 ```
 
-Ces valeurs correspondent aux réglages par défaut utilisés au démarrage du programme.
+La configuration active est stockée dans :
+
+```cpp
+Variable config;
+```
 
 
 
-## 2.3 Sauvegarde des paramètres dans l’EEPROM
+## 2.10 Sauvegarde et chargement de l’EEPROM
 
-Pour éviter de perdre les paramètres lors d’un redémarrage, la configuration est sauvegardée dans la mémoire **EEPROM**.
+Les paramètres sont sauvegardés dans l’EEPROM afin d’être conservés après redémarrage.
 
-Deux fonctions sont utilisées pour gérer cela :
-
-- `sauvegarderEEPROM()`
-- `chargerEEPROM()`
-
-La fonction `sauvegarderEEPROM()` enregistre la structure `config` dans l’EEPROM.
-
-```c
+```cpp
 void sauvegarderEEPROM() {
   EEPROM.update(0, EEPROM_SIGNATURE);
   EEPROM.put(1, config);
 }
 ```
 
-La fonction `chargerEEPROM()` permet ensuite de relire les paramètres au démarrage.
-
-```c
-bool chargerEEPROM() {
-  if(EEPROM.read(0) != EEPROM_SIGNATURE){
-    Serial.println(F("EEPROM invalide, valeurs par defaut"));
-    return false;
+```cpp
+void chargerEEPROM() {
+  if (EEPROM.read(0) != EEPROM_SIGNATURE) {
+    memcpy_P(&config, &CONFIG_DEFAULT, sizeof(config));
+  } else {
+    EEPROM.get(1, config);
   }
-  EEPROM.get(1, config);
-  return true;
 }
 ```
 
-Une signature (`EEPROM_SIGNATURE`) est utilisée pour vérifier que les données présentes en mémoire sont valides.
-
-Si la signature n’est pas correcte, le programme considère que l’EEPROM n’est pas initialisée correctement et il garde donc les valeurs par défaut.
 
 
+## 2.11 Machine à états
 
-## 2.4 Machine à états : gestion des modes
+Le programme utilise une machine à états pour gérer les différents modes.
 
-Le fonctionnement global du programme repose sur une **machine à états**.  
-Cela veut dire que la station météo peut fonctionner dans plusieurs modes différents selon la situation.
-
-Ces modes sont définis dans l’énumération `ModeCapteur`.
-
-```c
-enum ModeCapteur {
-    STANDARD,
-    CONFIGURATION,
-    MAINTENANCE,
-    ECONOMIQUE
-};
-```
-
-Le programme utilise ensuite deux variables pour suivre le mode actuel et le mode précédent.
-
-```c
+```cpp
+enum ModeCapteur : uint8_t { STANDARD, CONFIGURATION, MAINTENANCE, ECONOMIQUE };
 ModeCapteur modeActuel    = STANDARD;
 ModeCapteur modePrecedent = STANDARD;
 ```
 
-Chaque mode correspond à un comportement précis :
-
-- **STANDARD** : fonctionnement normal de la station météo
-- **CONFIGURATION** : modification des paramètres via le port série
-- **MAINTENANCE** : test des capteurs sans écrire sur la carte SD
-- **ECONOMIQUE** : réduction de certaines opérations pour économiser l’énergie
-
-Cette organisation permet d’avoir un programme plus propre, car chaque comportement est séparé.
+Chaque mode correspond à un comportement différent du système.
 
 
+## 2.12 Gestion du temps
 
-## 2.5 Gestion des erreurs
+Le programme utilise plusieurs timers pour gérer les actions périodiques.
 
-Dans cette nouvelle version, un système de gestion des erreurs a été ajouté.  
-C’est important, car cela permet au programme de détecter certains problèmes et de les signaler.
+```cpp
+const uint16_t LCD_REFRESH = 1000;
+const uint8_t DEBOUNCE_DELAY = 50;
 
-Les erreurs possibles sont regroupées dans l’énumération suivante :
-
-```c
-enum TypeErreur {
-  ERREUR_AUCUNE,
-  ERREUR_RTC,
-  ERREUR_GPS,
-  ERREUR_CAPTEUR,
-  ERREUR_CAPTEUR_INCOHERENT,
-  ERREUR_SD_PLEINE,
-  ERREUR_SD_ECRITURE
-};
-```
-
-L’erreur actuelle est stockée dans la variable suivante.
-
-```c
-TypeErreur erreurActuelle = ERREUR_AUCUNE;
-```
-
-Le programme utilise aussi quelques variables supplémentaires pour gérer le clignotement de la LED lorsqu’une erreur est détectée.
-
-```c
-unsigned long lastBlink = 0;
-bool etatLED = false;
-```
-
-Grâce à cela, la station peut signaler visuellement un problème, par exemple une erreur GPS, un problème capteur ou un défaut d’écriture sur la carte SD.
-
-
-
-## 2.6 Gestion du temps avec des timers
-
-Le programme utilise plusieurs variables de type `unsigned long` pour gérer les actions périodiques.
-
-```c
-unsigned long lastMeasure      = 0;
-unsigned long lastLCDRefresh   = 0;
+unsigned long lastMeasure = 0;
+unsigned long lastLCDRefresh = 0;
 unsigned long derniereActivite = 0;
 ```
 
-Ces timers servent notamment à :
 
-- déclencher les mesures à intervalles réguliers
-- rafraîchir l’écran LCD
-- détecter l’inactivité en mode configuration
+## 2.13 Gestion des boutons avec interruptions
 
-Cette méthode est très utilisée sur Arduino, car elle permet d’éviter de bloquer le programme avec de longues temporisations.
+Les boutons utilisent des interruptions pour améliorer la réactivité.
 
-
-
-## 2.7 Gestion des boutons avec interruptions
-
-Le système utilise deux boutons :
-
-- un bouton rouge
-- un bouton vert
-
-Pour améliorer la réactivité du programme, la gestion des boutons passe par des **interruptions**.
-
-Deux indicateurs `volatile` sont utilisés pour signaler qu’un événement a eu lieu sur un bouton.
-
-```c
+```cpp
 volatile bool rougeEvent = false;
 volatile bool vertEvent  = false;
-```
 
-Les fonctions d’interruption sont les suivantes :
-
-```c
 void ISR_boutonRouge() { rougeEvent = true; }
 void ISR_boutonVert()  { vertEvent  = true; }
 ```
 
-Le programme conserve aussi les instants d’appui et les derniers temps de debounce.
-
-```c
-unsigned long debutRouge        = 0;
-unsigned long debutVert         = 0;
-unsigned long lastDebounceRouge = 0;
-unsigned long lastDebounceVert  = 0;
-```
-
-Cela permet ensuite de distinguer correctement :
-
-- les appuis courts
-- les appuis longs
-- les rebonds mécaniques des boutons
 
 
+## 2.14 Fonction principale de mesure
 
-## 2.8 Utilisation d’un pointeur de fonction
+La fonction `afficherEtEnregistrer()` centralise la lecture des capteurs et l’enregistrement des données.
 
-Pour gérer les différents modes de manière plus propre, le programme utilise un **pointeur de fonction**.
+Elle réalise :
 
-Le type suivant est défini :
-
-```c
-typedef void (*ModeHandler)();
-ModeHandler modeHandler = nullptr;
-```
-
-Chaque mode possède ensuite sa propre fonction :
-
-```c
-void modeStandard();
-void modeConfiguration();
-void modeMaintenance();
-void modeEconomique();
-```
-
-Une fonction appelée `updateModeHandler()` permet d’associer la bonne fonction au mode actuel.
-
-```c
-void updateModeHandler(){
-  switch(modeActuel){
-    case STANDARD: modeHandler = &modeStandard; break;
-    case CONFIGURATION: modeHandler = &modeConfiguration; break;
-    case MAINTENANCE: modeHandler = &modeMaintenance; break;
-    case ECONOMIQUE: modeHandler = &modeEconomique; break;
-  }
-}
-```
-
-Ensuite, dans la boucle principale, il suffit simplement d’exécuter :
-
-```c
-if(modeHandler) modeHandler();
-```
-
-Cela permet d’appeler automatiquement la fonction correspondant au mode actif.
-
-Cette technique rend le code plus propre et évite de mettre une grosse série de conditions dans la boucle principale.
-
-
-
-## 2.9 Fonction utilitaire d’affichage de l’heure
-
-Le programme contient une petite fonction utilitaire appelée `afficherHeure()`.
-
-```c
-void afficherHeure(Print &out, DateTime t) {
-  if (t.hour() < 10) out.print('0'); out.print(t.hour()); out.print(':');
-  if (t.minute() < 10) out.print('0'); out.print(t.minute()); out.print(':');
-  if (t.second() < 10) out.print('0'); out.print(t.second());
-}
-```
-
-Cette fonction permet d’afficher l’heure au bon format, avec des zéros devant si nécessaire.
-
-Par exemple, au lieu d’avoir `8:5:3`, on obtient un affichage plus propre comme `08:05:03`.
-
-Le fait de passer par une fonction dédiée évite aussi de répéter ce même code à plusieurs endroits.
-
-
-
-## 2.10 Fonction de lecture, affichage et enregistrement des mesures
-
-L’une des fonctions principales du programme est `afficherEtEnregistrer()`.
-
-Cette fonction regroupe plusieurs tâches importantes :
-
-- lecture de l’heure avec le RTC
-- lecture de la température et de l’humidité avec le DHT11
+- lecture de l’heure
+- lecture du capteur DHT11
 - lecture de la luminosité
-- lecture des coordonnées GPS
-- affichage des données dans le moniteur série
-- enregistrement éventuel des données sur la carte SD
+- récupération des coordonnées GPS
+- affichage sur le port série
+- enregistrement sur la carte SD
 
-```c
-void afficherEtEnregistrer(bool ecrireSD) {
-  DateTime t = rtc.now();
-  float temp = dht.readTemperature();
-  float hum  = dht.readHumidity();
-  int lum    = analogRead(LUMIN_PIN);
-  bool dhtOK = !isnan(temp) && !isnan(hum);
-  if(!dhtOK) erreurActuelle = ERREUR_CAPTEUR;
-  if(!gps.location.isValid()) erreurActuelle = ERREUR_GPS;
 
-  Print &out = Serial;
-  afficherHeure(out, t);
 
-  if (dhtOK) {
-    out.print(F(" | Temp: ")); out.print(temp);
-    out.print(F(" | Hum: ")); out.print(hum);
-  } else out.print(F(" | Temp: ERR | Hum: ERR"));
+## 2.15 Fonction setup()
 
-  out.print(F(" | Lum: ")); out.print(lum);
+La fonction `setup()` est exécutée une seule fois au démarrage.
 
-  if (gps.location.isValid()) {
-    out.print(F(" | Lat: ")); out.print(gps.location.lat(), 6);
-    out.print(F(" | Lon: ")); out.print(gps.location.lng(), 6);
-  } else out.print(F(" | GPS: Pas de signal"));
+Elle initialise :
 
-  out.println();
+- la communication série
+- le GPS
+- le bus I2C
+- le capteur DHT
+- l’écran LCD
+- la carte SD
+- les interruptions des boutons
+- la configuration EEPROM
 
-  if(ecrireSD){
-    File f = SD.open("meteo.txt", FILE_WRITE);
-    if(f){
-      afficherHeure(f, t);
-      if(dhtOK){ f.print(F(" | Temp: ")); f.print(temp); f.print(F(" | Hum: ")); f.print(hum); }
-      else f.print(F(" | Temp: ERR | Hum: ERR"));
-      f.print(F(" | Lum: ")); f.print(lum);
-      if(gps.location.isValid()){ f.print(F(" | Lat: ")); f.print(gps.location.lat(), 6); f.print(F(" | Lon: ")); f.print(gps.location.lng(), 6); }
-      else f.print(F(" | GPS: ERR"));
-      f.println(); f.close();
-    } else Serial.println(F("Erreur ecriture SD !"));
-      erreurActuelle = ERREUR_SD_ECRITURE;
-  }
-}
-```
 
-Le paramètre `ecrireSD` permet de choisir si les données doivent être sauvegardées sur la carte SD ou non.
 
-Par exemple :
+## 2.16 Fonction loop()
 
-- en mode **STANDARD**, les données sont affichées et enregistrées
-- en mode **MAINTENANCE**, elles sont affichées sans être enregistrées
+La fonction `loop()` correspond à la boucle principale du programme.
 
-Cette fonction centralise donc toute la logique de mesure du système.
+Elle effectue en continu :
 
+- lecture du GPS
+- gestion des boutons
+- gestion du timeout du mode configuration
+- exécution du mode actif
+- mise à jour de l’écran LCD
 
-
-## 2.11 Configuration du RTC
-
-Le programme possède plusieurs fonctions pour configurer l’horloge temps réel directement depuis le port série.
-
-### Configuration de l’heure
-
-La fonction `configurerHeure()` permet de modifier l’heure au format `hh:mm:ss`.
-
-```c
-void configurerHeure(const char *val){
-    int h, m, s;
-
-    if(sscanf(val, "%d:%d:%d", &h, &m, &s) != 3){
-        Serial.println(F("Format CLOCK invalide."));
-        return;
-    }
-
-    if(h<0 || h>23 || m<0 || m>59 || s<0 || s>59){
-        Serial.println(F("Valeurs heure invalides."));
-        return;
-    }
-
-    DateTime now = rtc.now();
-    rtc.adjust(DateTime(now.year(), now.month(), now.day(), h, m, s));
-
-    Serial.println(F("Heure mise a jour."));
-}
-```
-
-### Configuration de la date
-
-La fonction `configurerDate()` permet de modifier la date.
-
-```c
-void configurerDate(const char *val){
-    int mois, jour, annee;
-
-    if(sscanf(val, "%d,%d,%d", &mois, &jour, &annee) != 3){
-        Serial.println(F("Format DATE invalide."));
-        return;
-    }
-
-    if(mois<1 || mois>12 || jour<1 || jour>31 || annee<2000 || annee>2099){
-        Serial.println(F("Valeurs date invalides."));
-        return;
-    }
-
-    DateTime now = rtc.now();
-    rtc.adjust(DateTime(annee, mois, jour, now.hour(), now.minute(), now.second()));
-
-    Serial.println(F("Date mise a jour."));
-}
-```
-
-### Configuration du jour
-
-La fonction `configurerJour()` permet de traiter le jour de la semaine à partir d’abréviations comme `MON`, `TUE`, `WED`, etc.
-
-```c
-void configurerJour(const char *val){
-    int day = -1;
-
-    if(strcmp(val,"MON")==0) day=1;
-    else if(strcmp(val,"TUE")==0) day=2;
-    else if(strcmp(val,"WED")==0) day=3;
-    else if(strcmp(val,"THU")==0) day=4;
-    else if(strcmp(val,"FRI")==0) day=5;
-    else if(strcmp(val,"SAT")==0) day=6;
-    else if(strcmp(val,"SUN")==0) day=0;
-
-    if(day == -1){
-        Serial.println(F("Jour invalide."));
-        return;
-    }
-
-    DateTime now = rtc.now();
-
-    rtc.adjust(DateTime(now.year(), now.month(), now.day(),
-                        now.hour(), now.minute(), now.second()));
-
-    Serial.println(F("Jour de semaine mis a jour."));
-}
-```
-
-Ces fonctions permettent de régler l’horloge sans avoir besoin de reprogrammer la carte.
-
-
-
-## 2.12 Réinitialisation des paramètres
-
-Le programme possède aussi une fonction `resetParametres()` qui permet de remettre toute la configuration par défaut.
-
-```c
-void resetParametres() {
-    config = {
-        3000, 20000, 10000, 4096,
-        1, 255, 768,
-        1, -10, 60,
-        1, 0, 50,
-        1, 850, 1080
-    };
-    sauvegarderEEPROM();
-    Serial.println(F("Paramètres réinitialisés par défaut."));
-}
-```
-
-Cette fonction est utilisée avec la commande RESET lorsque le programme est en mode configuration.
-
-
-
-## 2.13 Gestion des commandes série en mode configuration
-
-En mode configuration, le programme peut recevoir différentes commandes depuis le moniteur série.
-
-Toute cette logique est regroupée dans la fonction `traiterCommande()`.
-
-```c
-void traiterCommande(char *cmd){
-
-    if(strncmp(cmd, "CLOCK ", 6) == 0){configurerHeure(cmd + 6);return;}
-
-    if(strncmp(cmd, "DATE ", 5) == 0){configurerDate(cmd + 5);return;}
-
-    if(strncmp(cmd, "DAY ", 4) == 0){configurerJour(cmd + 4);return;}
-
-    if(strcmp(cmd, "RESET") == 0){resetParametres();return;}
-
-    else if(strcmp(cmd, "VERSION") == 0){Serial.println(F("Station Meteo CESI - Version 1.0"));return;}
-
-    char *sep = strchr(cmd, '=');
-    if(sep == NULL) return;
-
-    *sep = '\0';
-    char *varName = cmd;
-    int valeur = atoi(sep + 1);
-
-    if(strcmp(varName, "LOG_INTERVAL") == 0)          config.LOG_INTERVAL = valeur * 1000;
-    else if(strcmp(varName, "DUREE_APPUI_LONG") == 0) config.DUREE_APPUI_LONG = valeur * 1000;
-    else if(strcmp(varName, "CONFIG_TIMEOUT") == 0)   config.CONFIG_TIMEOUT = valeur * 1000;
-    else if(strcmp(varName, "FILE_MAX_SIZE") == 0)   config.FILE_MAX_SIZE = valeur;
-
-    else if(strcmp(varName, "LUMIN") == 0)            config.LUMIN = valeur != 0;
-    else if(strcmp(varName, "LUMIN_LOW") == 0)        config.LUMIN_LOW = valeur;
-    else if(strcmp(varName, "LUMIN_HIGH") == 0)       config.LUMIN_HIGH = valeur;
-
-    else if(strcmp(varName, "TEMP_AIR") == 0)         config.TEMP_AIR = valeur != 0;
-    else if(strcmp(varName, "MIN_TEMP_AIR") == 0)     config.MIN_TEMP_AIR = valeur;
-    else if(strcmp(varName, "MAX_TEMP_AIR") == 0)     config.MAX_TEMP_AIR = valeur;
-
-    else if(strcmp(varName, "HYGR") == 0)             config.HYGR = valeur != 0;
-    else if(strcmp(varName, "HYGR_MINT") == 0)        config.HYGR_MINT = valeur;
-    else if(strcmp(varName, "HYGR_MAXT") == 0)        config.HYGR_MAXT = valeur;
-
-    else if(strcmp(varName, "PRESSURE") == 0)         config.PRESSURE = valeur != 0;
-    else if(strcmp(varName, "PRESSURE_MIN") == 0)     config.PRESSURE_MIN = valeur;
-    else if(strcmp(varName, "PRESSURE_MAX") == 0)     config.PRESSURE_MAX = valeur;
-
-    else{
-        Serial.println(F("Commande inconnue"));
-    }
-
-    sauvegarderEEPROM();
-
-    Serial.print(varName);
-    Serial.println(F(" modifications appliquees"));
-}
-```
-
-Cette fonction permet notamment :
-
-- de régler l’heure avec `CLOCK`
-- de régler la date avec `DATE`
-- de régler le jour avec `DAY`
-- de remettre les paramètres à zéro avec `RESET`
-- d’afficher la version du programme avec `VERSION`
-- de modifier directement certaines variables avec la syntaxe `NOM_VARIABLE=valeur`
-
-Après chaque modification, les paramètres sont sauvegardés dans l’EEPROM.
-
-
-
-## 2.14 Gestion détaillée des modes de fonctionnement
-
-Chaque mode possède sa propre fonction, ce qui rend le programme plus simple à comprendre.
-
-### Mode standard
-
-Le mode standard correspond au fonctionnement normal de la station.
-
-```c
-void modeStandard() {
-  setLEDMode();
-  if(millis() - lastMeasure >= config.LOG_INTERVAL){
-    lastMeasure = millis();
-    afficherEtEnregistrer(true);
-  }
-}
-```
-
-Dans ce mode, les mesures sont réalisées régulièrement et enregistrées sur la carte SD.
-
-### Mode configuration
-
-Le mode configuration permet de recevoir des commandes via le port série.
-
-```c
-void modeConfiguration() {
-  setLEDMode();
-  if(Serial.available()){
-    char commande[40];
-    Serial.readBytesUntil('\n', commande, sizeof(commande));
-    traiterCommande(commande);
-    derniereActivite = millis();
-  }
-}
-```
-
-### Mode maintenance
-
-Le mode maintenance permet de tester les mesures sans écrire sur la carte SD.
-
-```c
-void modeMaintenance() {
-  setLEDMode();
-  if(millis() - lastMeasure >= config.LOG_INTERVAL){
-    lastMeasure = millis();
-    afficherEtEnregistrer(false);
-  }
-}
-```
-
-### Mode économique
-
-Le mode économique réduit la fréquence de certaines opérations pour économiser de l’énergie.
-
-```c
-void modeEconomique() {
-  setLEDMode();
-  unsigned long now = millis();
-  if(now - lastMeasure >= config.LOG_INTERVAL*2){
-    lastMeasure = now;
-    compteurEco++;
-    if(compteurEco % 2 == 0){
-      Serial.println(F("GPS ACTIF"));
-      while(gpsSerial.available()) gps.encode(gpsSerial.read());
-    } else Serial.println(F("GPS DESACTIVE"));
-    afficherEtEnregistrer(true);
-  }
-}
-```
-
-Dans ce mode, les mesures sont moins fréquentes et le GPS n’est activé qu’un cycle sur deux.
-
-
-
-## 2.15 Gestion de la LED RGB
-
-La LED RGB sert ici à deux choses :
-
-- indiquer le mode de fonctionnement actuel
-- signaler les erreurs détectées
-
-### Couleur selon le mode
-
-La fonction `setLEDMode()` définit une couleur différente pour chaque mode.
-
-```c
-void setLEDMode() {
-  switch(modeActuel){
-    case STANDARD:      led.setColorRGB(0, 0, 100, 0); break;
-    case CONFIGURATION: led.setColorRGB(0, 100, 100, 100); break;
-    case MAINTENANCE:   led.setColorRGB(0, 100, 50, 0); break;
-    case ECONOMIQUE:    led.setColorRGB(0, 0, 0, 100); break;
-  }
-}
-```
-
-Par exemple :
-
-- vert pour le mode standard
-- blanc pour le mode configuration
-- jaune pour le mode maintenance
-- bleu pour le mode économique
-
-### Gestion visuelle des erreurs
-
-La fonction `gererLEDErreur()` fait clignoter la LED selon le type d’erreur détecté.
-
-```c
-void gererLEDErreur() {
-  if(erreurActuelle == ERREUR_AUCUNE) return;
-
-  unsigned long interval = 4000;
-  if(erreurActuelle == ERREUR_CAPTEUR_INCOHERENT || erreurActuelle == ERREUR_SD_ECRITURE){
-    interval = 8000;
-  }
-
-  if(millis() - lastBlink >= interval){
-    lastBlink = millis();
-
-    if(erreurActuelle == ERREUR_CAPTEUR_INCOHERENT || erreurActuelle == ERREUR_SD_ECRITURE){
-        etatLED = !etatLED;
-    } else {
-        etatLED = !etatLED;
-    }
-  }
-
-  switch(erreurActuelle){
-    case ERREUR_RTC:
-      if(etatLED) led.setColorRGB(0,255,0,0);
-      else        led.setColorRGB(0,0,0,255);
-      break;
-
-    case ERREUR_GPS:
-      if(etatLED) led.setColorRGB(0,255,0,0);
-      else        led.setColorRGB(0,255,255,0);
-      break;
-
-    case ERREUR_CAPTEUR:
-      if(etatLED) led.setColorRGB(0,255,0,0);
-      else        led.setColorRGB(0,0,255,0);
-      break;
-
-    case ERREUR_CAPTEUR_INCOHERENT:
-      if(etatLED) led.setColorRGB(0,255,0,0);
-      else        led.setColorRGB(0,0,255,0);
-      break;
-
-    case ERREUR_SD_PLEINE:
-      if(etatLED) led.setColorRGB(0,255,0,0);
-      else        led.setColorRGB(0,255,255,255);
-      break;
-
-    case ERREUR_SD_ECRITURE:
-      if(etatLED) led.setColorRGB(0,255,0,0);
-      else        led.setColorRGB(0,255,255,255);
-      break;
-
-    default:
-      break;
-  }
-}
-```
-
-Cette gestion visuelle est pratique car elle permet de repérer rapidement un problème sans devoir forcément regarder le moniteur série.
-
-
-
-## 2.16 Affichage sur l’écran LCD
-
-L’écran LCD est mis à jour régulièrement grâce à la fonction `afficherLCD()`.
-
-```c
-void afficherLCD(){
-  unsigned long now = millis();
-  if(now - lastLCDRefresh < LCD_REFRESH) return;
-  lastLCDRefresh = now;
-
-  DateTime t = rtc.now();
-  lcd.setCursor(0,0); afficherHeure(lcd,t);
-  lcd.setCursor(0,1);
-  switch(modeActuel){
-    case STANDARD:      lcd.print(F("Mode: STANDARD  ")); break;
-    case CONFIGURATION: lcd.print(F("Mode: CONFIG    ")); break;
-    case MAINTENANCE:   lcd.print(F("Mode: MAINT     ")); break;
-    case ECONOMIQUE:    lcd.print(F("Mode: ECO       ")); break;
-  }
-}
-```
-
-La première ligne affiche l’heure courante et la deuxième ligne affiche le mode actif.
-
-Cela permet à l’utilisateur de voir directement dans quel état se trouve la station.
-
-
-
-## 2.17 Gestion générique des boutons
-
-Pour éviter de répéter deux fois la même logique, le programme utilise une fonction générique appelée `traiterBouton()`.
-
-```c
-void traiterBouton(uint8_t pin, volatile bool &eventFlag, unsigned long &debut, unsigned long &lastDebounce, void (*actionCourte)(), void (*actionLongue)()){
-  if(!eventFlag) return;
-  eventFlag = false;
-
-  unsigned long now = millis();
-  if(now - lastDebounce < DEBOUNCE_DELAY) return;
-  lastDebounce = now;
-
-  bool etat = digitalRead(pin);
-  if(etat == LOW) debut = now;
-  else {
-    unsigned long duree = now - debut;
-    if(duree >= config.DUREE_APPUI_LONG && actionLongue) actionLongue();
-    else if(duree < config.DUREE_APPUI_LONG && actionCourte) actionCourte();
-  }
-}
-```
-
-Cette fonction permet de :
-
-- détecter un changement d’état sur un bouton
-- appliquer un anti-rebond
-- mesurer la durée de l’appui
-- appeler automatiquement l’action courte ou l’action longue
-
-Cela évite de dupliquer du code pour chaque bouton.
-
-
-## 2.18 Actions associées aux boutons
-
-Les actions concrètes des boutons sont définies dans plusieurs petites fonctions.
-
-### Appui court sur le bouton rouge
-
-```c
-void rougeCourte(){ 
-  modeActuel = CONFIGURATION;
-  derniereActivite = millis();
-  lastLCDRefresh=0;
-  updateModeHandler();
-}
-```
-
-Cet appui permet d’entrer en mode configuration.
-
-### Appui long sur le bouton rouge
-
-```c
-void rougeLongue(){
-  if(modeActuel==STANDARD){ modePrecedent=STANDARD; modeActuel=MAINTENANCE; lastLCDRefresh=0; }
-  else if(modeActuel==ECONOMIQUE){ modeActuel=STANDARD; lastLCDRefresh=0; }
-  else if(modeActuel==MAINTENANCE){ modeActuel=modePrecedent; lastLCDRefresh=0; }
-  updateModeHandler();
-}
-```
-
-Cet appui permet par exemple de passer en mode maintenance ou de revenir au mode précédent.
-
-### Appui long sur le bouton vert
-
-```c
-void vertLongue(){
-  if(modeActuel==STANDARD){ modePrecedent=STANDARD; modeActuel=ECONOMIQUE; lastLCDRefresh=0; updateModeHandler(); }
-}
-```
-
-Cet appui permet de passer en mode économique.
-
-
-
-## 2.19 Fonction `setup()`
-
-Comme dans tous les programmes Arduino, la fonction `setup()` est exécutée une seule fois au démarrage du système.
-
-```c
-void setup(){
-  Serial.begin(9600);
-  gpsSerial.begin(9600);
-  Wire.begin();
-
-  if(!rtc.begin()) Serial.println(F("Erreur RTC !"));
-  if(!rtc.isrunning()){ rtc.adjust(DateTime(F(__DATE__),F(__TIME__))); }
-
-  dht.begin();
-  pinMode(LUMIN_PIN, INPUT);
-  pinMode(BOUTON_ROUGE, INPUT_PULLUP);
-  pinMode(BOUTON_VERT, INPUT_PULLUP);
-
-  lcd.begin(16,2); lcd.setRGB(0,255,0);
-
-  if(!SD.begin(SD_CS)) Serial.println(F("Erreur carte SD !"));
-  else{
-    Serial.println(F("Carte SD OK"));
-    if(SD.exists("meteo.txt")) {
-      SD.remove("meteo.txt");
-      Serial.println(F("Anciennes donnees effacees"));
-    }
-  }
-
-  attachInterrupt(digitalPinToInterrupt(BOUTON_ROUGE), ISR_boutonRouge, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(BOUTON_VERT),  ISR_boutonVert,  CHANGE);
-
-  chargerEEPROM();
-
-  modeActuel = STANDARD;
-  updateModeHandler();
-  Serial.println(F("Systeme demarre."));
-}
-```
-
-Cette fonction permet notamment :
-
-- d’initialiser les communications série
-- de démarrer le GPS
-- d’initialiser le bus I2C
-- de démarrer le RTC
-- d’initialiser le capteur DHT11
-- de configurer les broches d’entrée
-- de démarrer l’écran LCD
-- d’initialiser la carte SD
-- d’attacher les interruptions des boutons
-- de charger la configuration depuis l’EEPROM
-- de définir le mode de fonctionnement initial
-
-
-
-## 2.20 Fonction `loop()`
-
-La fonction `loop()` correspond à la boucle principale du programme.  
-Elle est exécutée en continu tant que le système est alimenté.
-
-```c
-void loop(){
-  unsigned long now = millis();
-
-  while(gpsSerial.available()) gps.encode(gpsSerial.read());
-
-  traiterBouton(BOUTON_ROUGE, rougeEvent, debutRouge, lastDebounceRouge, rougeCourte, rougeLongue);
-  traiterBouton(BOUTON_VERT,  vertEvent,  debutVert,  lastDebounceVert,  nullptr, vertLongue);
-
-  if(modeActuel==CONFIGURATION && now-derniereActivite>=config.CONFIG_TIMEOUT){
-    modeActuel=STANDARD;
-    updateModeHandler();
-    lastLCDRefresh=0;
-  }
-
-  if(modeHandler) modeHandler();
-  afficherLCD();
-  if(erreurActuelle != ERREUR_AUCUNE) gererLEDErreur();
-  delay(50);
-}
-```
-
-Dans cette boucle, le programme :
-
-- lit les données GPS
-- gère les événements liés aux boutons
-- vérifie le temps d’inactivité en mode configuration
-- exécute la fonction correspondant au mode courant
-- met à jour l’écran LCD
-- gère les erreurs avec la LED
-- recommence en continu
-
-Cette organisation permet au système de fonctionner en permanence tout en restant réactif aux actions de l’utilisateur et aux événements matériels.
+Le programme fonctionne ainsi en permanence tant que la carte Arduino est alimentée.
 
 # Livrable 4- Documentation
 
