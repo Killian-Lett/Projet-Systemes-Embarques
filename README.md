@@ -448,7 +448,8 @@ Elle initialise :
 - la carte SD
 - les interruptions des boutons
 - la configuration EEPROM
-```
+  
+```cpp
 void setup() {
   Serial.begin(9600);
   gpsSerial.begin(9600);
@@ -495,7 +496,7 @@ Elle effectue en continu :
 - exécution du mode actif
 - mise à jour de l’écran LCD
 
-```
+```cpp
 void loop() {
   unsigned long now = millis();
 
